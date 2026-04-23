@@ -40,6 +40,7 @@ export default {
       if (request.method === 'POST' && path === '/bigquery')    return handleBigQuery(request, env);
       if (request.method === 'POST' && path === '/gsc-inspect') return handleGscInspect(request, env);
       if (path.startsWith('/make/'))                 return handleMake(request, env, url, path);
+      if (path === '/make-debug')                    return handleMakeDebug(request, env);
 
       return new Response('Not found', { status: 404, headers: CORS });
     } catch (e) {
@@ -281,4 +282,45 @@ async function handleMake(request, env, url, path) {
     status: lastStatus,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
+}
+
+// ── Make.com debug — visit /make-debug in browser to diagnose ─
+async function handleMakeDebug(request, env) {
+  const token = env.MAKE_API_TOKEN || '';
+  const results = {};
+
+  const authVariants = [
+    ['Authorization: Token', { 'Authorization': `Token ${token}` }],
+    ['X-Imt-Api-Key',        { 'X-Imt-Api-Key': token }],
+  ];
+  const bases = ['https://eu1.make.com/api/v2', 'https://us1.make.com/api/v2', 'https://us2.make.com/api/v2'];
+
+  // Test 1: /users/me — basic auth check (no special scope needed)
+  for (const [label, headers] of authVariants) {
+    for (const base of bases) {
+      const key = `${label} @ ${base}`;
+      try {
+        const r = await fetch(`${base}/users/me`, { headers });
+        results[key] = { status: r.status, body: (await r.text()).slice(0, 300) };
+      } catch(e) { results[key] = { error: e.message }; }
+    }
+  }
+
+  // Test 2: data store endpoint with whichever auth worked
+  const workingAuth = authVariants.find(([label]) => Object.entries(results).some(([k,v]) => k.startsWith(label) && v.status === 200));
+  if (workingAuth) {
+    const [label, headers] = workingAuth;
+    for (const base of bases) {
+      try {
+        const r = await fetch(`${base}/data-stores/157873/data-store-records?teamId=583475&limit=1`, { headers });
+        results[`datastore @ ${base}`] = { status: r.status, body: (await r.text()).slice(0, 300) };
+      } catch(e) { results[`datastore @ ${base}`] = { error: e.message }; }
+    }
+  }
+
+  return new Response(JSON.stringify({
+    tokenLength: token.length,
+    tokenPreview: token ? token.slice(0,4) + '...' + token.slice(-4) : 'MISSING',
+    results
+  }, null, 2), { headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
