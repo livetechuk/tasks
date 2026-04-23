@@ -4010,19 +4010,29 @@ async function loadMakeClientsIntoDropdown() {
   if (!clients) {
     try {
       const res = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/make/data-store-records?dataStoreId=157873&teamId=583475');
-      if (!res.ok) throw new Error('fetch failed');
+      if (!res.ok) throw new Error('fetch failed ' + res.status);
       const data = await res.json();
-      const records = data.records || data.data?.records || (Array.isArray(data) ? data : []);
+      console.log('[Make] raw response:', JSON.stringify(data).slice(0, 500));
+      // Make.com v2 returns { data: [{key, value}] } or { records: [...] }
+      const records = Array.isArray(data.data) ? data.data
+        : data.records || data.data?.records || (Array.isArray(data) ? data : []);
+      console.log('[Make] records count:', records.length);
       if (records.length) {
-        clients = records.map(r => {
+        const mapped = records.map(r => {
           const v = r.value || r.data || r;
-          const bq = v.bq_dataset || '';
-          return { id: bq, name: v.name || r.key || bq, bq_dataset: bq, assignee: v.assignee || '', drive_folder_id: v.drive_folder_id || '' };
+          console.log('[Make] record value keys:', Object.keys(v));
+          // field name may vary: bq_dataset, dataset, BigQuery, etc.
+          const bq = v.bq_dataset || v.dataset || v.bigquery_dataset || v.bq || r.key || '';
+          const name = v.name || v.client_name || r.key || bq;
+          return { id: bq || r.key || name, name, bq_dataset: bq, assignee: v.assignee || '', drive_folder_id: v.drive_folder_id || '' };
         }).filter(c => c.id);
-        _makeClientsCache = clients;
-      } else throw new Error('empty');
+        if (mapped.length) {
+          clients = mapped;
+          _makeClientsCache = clients;
+        } else throw new Error('no valid records after mapping');
+      } else throw new Error('empty response');
     } catch(e) {
-      // Fail open: no assignees so all marketing team members see all clients
+      console.warn('[Make] falling back to hardcoded list:', e.message);
       clients = MAKE_CLIENTS_FALLBACK.map(c => ({ ...c, assignee: '' }));
       _makeClientsCache = clients;
     }
