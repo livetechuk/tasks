@@ -534,6 +534,32 @@
   .nav-projects-btn:hover { border-color: #4caf82; color: #1a1a1a; }
   .nav-projects-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
 
+  /* ── Sidebar layout ── */
+  .app-shell { display:flex; min-height:100vh; }
+  .sidebar { width:220px; flex-shrink:0; background:var(--navy); display:flex; flex-direction:column; position:fixed; top:0; left:0; height:100vh; overflow-y:auto; z-index:100; }
+  .sidebar-logo-wrap { padding:22px 20px 16px; border-bottom:1px solid rgba(255,255,255,0.08); }
+  .sidebar-nav { flex:1; padding:10px 10px 8px; display:flex; flex-direction:column; gap:1px; overflow-y:auto; }
+  .sidebar-section-label { font-size:10px; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.08em; padding:10px 10px 4px; }
+  .sidebar-item { display:flex; align-items:center; gap:10px; width:100%; background:none; border:none; border-radius:8px; padding:9px 10px; font-size:13px; font-family:inherit; color:rgba(255,255,255,0.6); cursor:pointer; text-align:left; transition:background 0.12s,color 0.12s; font-weight:500; }
+  .sidebar-item svg { flex-shrink:0; }
+  .sidebar-item:hover { background:rgba(255,255,255,0.08); color:#fff; }
+  .sidebar-item.active { background:var(--coral); color:#fff; }
+  .sidebar-subitem { display:flex; align-items:center; width:100%; background:none; border:none; border-radius:6px; padding:7px 10px 7px 36px; font-size:12px; font-family:inherit; color:rgba(255,255,255,0.45); cursor:pointer; text-align:left; transition:all 0.12s; }
+  .sidebar-subitem:hover { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.8); }
+  .sidebar-subitem.active { color:#fff; background:rgba(255,255,255,0.1); font-weight:500; }
+  .sidebar-divider { height:1px; background:rgba(255,255,255,0.08); margin:6px 10px; }
+  .sidebar-footer { padding:12px 10px 16px; border-top:1px solid rgba(255,255,255,0.08); }
+  .sidebar-user-row { display:flex; align-items:center; gap:10px; padding:6px 8px 8px; }
+  .sidebar-avatar { width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:#fff; flex-shrink:0; }
+  .sidebar-username { font-size:13px; color:rgba(255,255,255,0.8); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sidebar-signout { display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; border-radius:6px; padding:8px 10px; font-size:12px; font-family:inherit; color:rgba(255,255,255,0.4); cursor:pointer; text-align:left; }
+  .sidebar-signout:hover { color:rgba(255,255,255,0.75); background:rgba(255,255,255,0.06); }
+  .main-area { margin-left:220px; min-height:100vh; padding:28px 32px 60px; max-width:calc(100vw - 220px); }
+  .main-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+  .main-title { font-size:20px; font-weight:600; color:var(--navy); }
+  .main-date { font-size:13px; color:#888; margin-top:3px; }
+  .main-header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
   /* ── Calendar week/day view ── */
   .cal-view-toggle { display: flex; gap: 3px; }
   .cal-view-btn { background: #f5f5f3; border: 0.5px solid #e0ddd6; border-radius: 7px; padding: 4px 10px; font-size: 11px; font-family: inherit; color: #888; cursor: pointer; transition: all 0.15s; }
@@ -587,7 +613,7 @@
   .mn-textarea:focus { outline: none; border-color: var(--coral, #fd9357); }
   /* SEO Sidebar Layout */
   .mn-layout { display: flex; gap: 16px; align-items: flex-start; }
-  .mn-sidebar { width: 200px; flex-shrink: 0; background: #fff; border: 0.5px solid #e0ddd6; border-radius: 12px; padding: 14px; position: sticky; top: 12px; max-height: calc(100vh - 80px); overflow-y: auto; }
+  .mn-sidebar { width: 200px; flex-shrink: 0; background: #fff; border: 0.5px solid #e0ddd6; border-radius: 12px; padding: 14px; position: sticky; top: 28px; max-height: calc(100vh - 56px); overflow-y: auto; }
   .mn-sidebar-title { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
   .mn-client-btn { display: block; width: 100%; text-align: left; padding: 8px 10px; background: none; border: none; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; color: #555; transition: all 0.12s; margin-bottom: 2px; }
   .mn-client-btn:hover { background: #f5f5f3; color: #1a1a1a; }
@@ -1017,63 +1043,74 @@ function renderList(loading){
   const active=allItems.filter(i=>!i.done);
   const done=allItems.filter(i=>i.done);
   const pct=items.length?Math.round(done.length/items.length*100):0;
-  // Use effectiveUser for all role-based checks
-  const effectiveUser = teamViewUser || currentUser;
+  const isTaskView=['list','kanban','calendar','workload'].includes(currentView);
+  const isSideView=['projects','marketing-review','meeting-notes','admin-panel','timesheets'].includes(currentView);
+  const tv=currentView;
+
+  // SVG icons
+  const icoTasks=`<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="3" width="3" height="3" rx="1" fill="currentColor"/><rect x="2" y="10" width="3" height="3" rx="1" fill="currentColor"/><rect x="7" y="4" width="7" height="1.5" rx=".75" fill="currentColor"/><rect x="7" y="11" width="7" height="1.5" rx=".75" fill="currentColor"/></svg>`;
+  const icoTime=`<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  const icoProj=`<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M2 5a1 1 0 0 1 1-1h3.5l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z" stroke="currentColor" stroke-width="1.5"/></svg>`;
+  const icoMR=`<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="9" width="3" height="5" rx=".75" fill="currentColor"/><rect x="6.5" y="6" width="3" height="8" rx=".75" fill="currentColor"/><rect x="11" y="3" width="3" height="11" rx=".75" fill="currentColor"/></svg>`;
+  const icoNotes=`<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><line x1="5.5" y1="6" x2="10.5" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="5.5" y1="9" x2="8.5" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  const icoAdmin=`<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.75 3.75l1.06 1.06M11.18 11.18l1.07 1.07M3.75 12.25l1.06-1.06M11.18 4.82l1.07-1.07" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  const icoSignout=`<svg width="14" height="14" fill="none" viewBox="0 0 14 14"><path d="M5 2H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2M9.5 9.5 12 7m0 0-2.5-2.5M12 7H5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
   document.getElementById("app").innerHTML=`
-    <div class="list-wrap">
-      <div class="list-header">
-        <div class="header-row">
-          <div>
-            <div class="list-title">
-              ${isTeamView()?`<span style="font-size:13px;color:#888;font-weight:400">Viewing </span>${esc(teamViewUser)}`:esc(currentUser)+"'s workspace"}
-            </div>
-            <div class="list-date">${today()}</div>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-logo-wrap">
+          <svg viewBox="0 0 254.99 39.84" style="height:24px;width:auto;display:block">
+            <style>.sl1{fill:#fa925b}.sl2{fill:#fff}</style>
+            <g><path class="sl1" d="M229.67,1.21c-1.51.02-2.91,1.05-3.34,2.58l-1.86,6.42c-.53,1.83.51,3.7,2.33,4.19l-.14.05c8.66,4.02,14.33,12.24,15.07,21.98.46,1.23,1.58,2.12,2.92,2.22h6.95c1.8-.08,3.24-1.59,3.24-3.45l.05.08c-1.21-15.55-10.79-28.53-25.22-34.07Z"/><path class="sl1" d="M224.57,22.95c-4.39,0-7.95,3.64-7.95,8.13s3.56,8.13,7.95,8.13,7.95-3.64,7.95-8.13-3.56-8.13-7.95-8.13Z"/></g>
+            <g><polygon class="sl2" points="6.57 2.09 0 39.19 10.1 39.19 16.86 1 6.57 2.09"/><path class="sl2" d="M27.46,0c-3.11,0-5.84,2.13-6.28,4.91-.49,3.28,1.36,5.4,4.86,5.4,3.11,0,5.79-2.13,6.28-4.86.6-3.33-1.36-5.46-4.86-5.46Z"/><polygon class="sl2" points="15.72 39.19 25.82 39.19 30.57 12.23 20.47 12.23 15.72 39.19"/><polygon class="sl2" points="54.64 12.23 50.38 19.76 46.07 28.38 44.81 19.76 43.17 12.23 32.91 12.23 39.57 39.19 49.56 39.19 65.66 12.23 54.64 12.23"/><path class="sl2" d="M81.06,11.63c-9.22,0-15.56,5.02-17.08,13.86-1.47,8.41,3.88,14.3,13.43,14.3,5.46,0,9.28-1.2,12.88-4.09l-4.04-5.89c-2.18,1.42-4.53,2.18-6.82,2.18-3.17,0-5.35-1.42-5.68-3.55h18.72c3.82-9.55-1.15-16.81-11.41-16.81ZM84.28,23.47h-9.88l.05-.22c.93-2.62,2.78-4.09,5.57-4.09,3.33,0,4.91,1.69,4.26,4.31Z"/><path class="sl2" d="M113.42,4.64l-10.15,1.09-1.15,6.5h-4.31l-1.37,7.75h4.31l-1.75,10.04c-1.09,6.39,1.8,9.82,8.08,9.82,3.11,0,5.79-.6,8.19-1.8l-.87-7.42c-1.15.49-2.13.71-3.11.71-1.75,0-2.46-.87-2.07-2.89l1.47-8.46h6.11l1.37-7.75h-6.11l1.36-7.59Z"/><path class="sl2" d="M136.24,11.63c-9.22,0-15.56,5.02-17.08,13.86-1.47,8.41,3.88,14.3,13.43,14.3,5.46,0,9.28-1.2,12.88-4.09l-4.04-5.89c-2.18,1.42-4.53,2.18-6.82,2.18-3.17,0-5.35-1.42-5.68-3.55h18.72c3.82-9.55-1.15-16.81-11.41-16.81ZM139.46,23.47h-9.88l.05-.22c.93-2.62,2.78-4.09,5.57-4.09,3.33,0,4.91,1.69,4.26,4.31Z"/><path class="sl2" d="M165.66,31.49c-3.38,0-5.18-2.4-4.53-5.89.66-3.55,3.28-5.89,6.82-5.89,1.86,0,3.27.65,4.48,1.96l6.06-5.73c-2.29-2.73-6.06-4.31-10.32-4.31-9.06,0-15.45,5.24-16.92,13.75-1.47,8.57,3.71,14.41,12.88,14.41,4.53,0,7.91-1.2,11.84-4.2l-4.69-6.33c-1.96,1.47-3.71,2.24-5.62,2.24Z"/><path class="sl2" d="M201.03,11.63c-2.95,0-5.73.98-8.02,2.73l2.34-13.35-10.4,1.09-6.52,37.09h10.1l2.51-14.19c.55-3.11,2.73-5.18,5.51-5.18,2.29,0,3.38,1.75,2.89,4.48l-2.62,14.9h10.1l2.67-15.28c1.36-7.91-1.64-12.28-8.57-12.28Z"/></g>
+          </svg>
+        </div>
+        <nav class="sidebar-nav">
+          <div class="sidebar-section-label">Navigation</div>
+          <button class="sidebar-item${isTaskView?' active':''}" onclick="setView('list')">${icoTasks} Tasks</button>
+          ${isTaskView?`
+            <button class="sidebar-subitem${tv==='list'?' active':''}" onclick="setView('list')">List</button>
+            <button class="sidebar-subitem${tv==='kanban'?' active':''}" onclick="setView('kanban')">Kanban</button>
+            <button class="sidebar-subitem${tv==='calendar'?' active':''}" onclick="setView('calendar')">Calendar</button>
+            <button class="sidebar-subitem${tv==='workload'?' active':''}" onclick="setView('workload')">Workload</button>
+          `:''}
+          <button class="sidebar-item${tv==='timesheets'?' active':''}" onclick="setView('timesheets')">${icoTime} Timesheets</button>
+          ${CLICKUP_USERS.includes(currentUser)?`<button class="sidebar-item${tv==='projects'?' active':''}" onclick="setView('projects')">${icoProj} Projects</button>`:''}
+          ${currentUser===SEO_MARKETING_HEAD?`<button class="sidebar-item${tv==='marketing-review'?' active':''}" onclick="setView('marketing-review')">${icoMR} Marketing Review</button>`:''}
+          ${SEO_MARKETING_TEAM.includes(currentUser)?`<button class="sidebar-item${tv==='meeting-notes'?' active':''}" onclick="setView('meeting-notes')">${icoNotes} Meeting Notes</button>`:''}
+          ${currentUser==='Holly'?`<button class="sidebar-item${tv==='admin-panel'?' active':''}" onclick="setView('admin-panel')">${icoAdmin} Admin</button>`:''}
+        </nav>
+        <div class="sidebar-footer">
+          <div class="sidebar-user-row">
+            <div class="sidebar-avatar">${(currentUser||'?').charAt(0).toUpperCase()}</div>
+            <span class="sidebar-username">${esc(isTeamView()?teamViewUser:currentUser)}</span>
           </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="sidebar-signout" onclick="switchUser()">${icoSignout} Sign out</button>
+        </div>
+      </aside>
+      <div class="main-area">
+        <div class="main-header">
+          <div>
+            <div class="main-title">${isTeamView()?`<span style="font-size:14px;color:#888;font-weight:400">Viewing </span>${esc(teamViewUser)}`:esc(currentUser)}</div>
+            <div class="main-date">${today()}</div>
+          </div>
+          <div class="main-header-actions">
             <span class="saving-label" id="saving-label"></span>
             ${isTeamView()?`<button class="switch-btn" onclick="clearTeamView()">← Back to my tasks</button>`:
-              `<button class="track-time-btn" id="track-time-btn" onclick="openTrackerPicker()">⏱ Track Time</button>`}
+              `<button class="track-time-btn" id="track-time-btn" onclick="openTrackerPicker()">Track Time</button>`}
             ${!isTeamView()&&isHead(currentUser)?renderTeamSwitcher():""}
             ${!isTeamView()?`<button class="notif-btn" onclick="openNotifPanel()" title="Notifications"><span>🔔</span><span class="notif-badge" id="notif-badge" style="display:none">0</span></button>`:""}
-            <button class="switch-btn" onclick="switchUser()">Sign out</button>
           </div>
         </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-        <div class="progress-label">${done.length} of ${items.length} done</div>
+        ${isTaskView?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label">${done.length} of ${items.length} done</div>`:''}
+        <div class="error-box" id="error-box" style="display:none"></div>
+        <div id="task-list">${loading?"<div class='loading-state'>Loading...</div>":renderCurrentViewAndInit(active)}</div>
+        ${!isTeamView()&&isTaskView&&!['calendar','workload'].includes(tv)?renderAddSection():""}
+        ${done.length>0&&isTaskView?renderCompletedSection(done):""}
+        ${!isTeamView()&&isTaskView?renderDelegatedSection():""}
+        ${isTaskView?`<div style="height:80px"></div>`:""}
       </div>
-      <div class="nav-bar" id="nav-bar">
-        <div class="nav-dropdown" id="nav-view">
-          <button class="nav-dropdown-btn${['list','kanban','calendar'].includes(currentView)?" active":""}" onclick="toggleNavDropdown('nav-view')">
-            ${ currentView==='kanban'?'⊞ Kanban':currentView==='calendar'?'📅 Calendar':'☰ List' }
-            <span class="nav-caret"></span>
-          </button>
-          <div class="nav-dropdown-menu">
-            <button class="nav-menu-item${currentView==='list'?" active":""}" onclick="setView('list');closeAllNavDropdowns()"><span class="nav-item-icon">☰</span> List</button>
-            <button class="nav-menu-item${currentView==='calendar'?" active":""}" onclick="setView('calendar');closeAllNavDropdowns()"><span class="nav-item-icon">📅</span> Calendar</button>
-            <button class="nav-menu-item${currentView==='kanban'?" active":""}" onclick="setView('kanban');closeAllNavDropdowns()"><span class="nav-item-icon">⊞</span> Kanban</button>
-          </div>
-        </div>
-        <div class="nav-dropdown" id="nav-schedule">
-          <button class="nav-dropdown-btn${['workload','timesheets'].includes(currentView)?" active":""}" onclick="toggleNavDropdown('nav-schedule')">
-            ${ currentView==='timesheets'?'🕐 Timesheets':'📊 Schedule' }
-            <span class="nav-caret"></span>
-          </button>
-          <div class="nav-dropdown-menu">
-            <button class="nav-menu-item${currentView==='workload'?" active":""}" onclick="setView('workload');closeAllNavDropdowns()"><span class="nav-item-icon">📊</span> Workload</button>
-            <button class="nav-menu-item${currentView==='timesheets'?" active":""}" onclick="setView('timesheets');closeAllNavDropdowns()"><span class="nav-item-icon">🕐</span> Timesheets</button>
-          </div>
-        </div>
-        ${CLICKUP_USERS.includes(effectiveUser)?`<button class="nav-projects-btn${currentView==='projects'?" active":""}" onclick="setView('projects')">📁 Projects</button>`:""}
-        ${effectiveUser===SEO_MARKETING_HEAD?`<button class="nav-projects-btn${currentView==='marketing-review'?" active":""}" onclick="setView('marketing-review')">Marketing Review</button>`:""}
-        ${SEO_MARKETING_TEAM.includes(effectiveUser)?`<button class="nav-projects-btn${currentView==='meeting-notes'?" active":""}" onclick="setView('meeting-notes')">Meeting Notes</button>`:""}
-        ${effectiveUser==='Holly'?`<button class="nav-projects-btn${currentView==='admin-panel'?" active":""}" onclick="setView('admin-panel')">Admin</button>`:""}
-      </div>
-      <div class="error-box" id="error-box" style="display:none"></div>
-      <div id="task-list">${loading?"<div class='loading-state'>Loading...</div>":renderCurrentViewAndInit(active)}</div>
-      ${!isTeamView()&&!['calendar','workload','timesheets','projects','marketing-review','meeting-notes','admin-panel'].includes(currentView)?renderAddSection():""}
-      ${done.length>0&&!['projects','marketing-review','meeting-notes','admin-panel'].includes(currentView)?renderCompletedSection(done):""}
-      ${!isTeamView()&&!['projects','marketing-review','meeting-notes','admin-panel'].includes(currentView)?renderDelegatedSection():""}
-      ${!isTeamView()?`<div style="height:80px"></div>`:""}
     </div>`;
   bindDragDrop();
   updateNotifBadge();
@@ -3504,6 +3541,7 @@ const SC_FINDINGS = [
 let _mrCurrentClientId = null;
 let _mrCurrentClientName = null;
 let _mrScDataCache = [];
+let _mrPerformanceCache = null;
 let _mnCurrentClientId = null;
 let _mnCurrentClientName = null;
 
@@ -3531,7 +3569,7 @@ function renderMarketingReview() {
                 <input type="text" id="mr-gsc-property" placeholder="https://example.com/" oninput="mrSaveGscProperty()"
                   style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:210px;color:#555">
                 <label style="font-size:12px;color:#888;font-weight:600">Month</label>
-                <select id="mr-month" onchange="mrLoadData()" class="seo-select">${getSeoMonthOptions()}</select>
+                <select id="mr-month" onchange="_mrPerformanceCache=null;mrLoadData()" class="seo-select">${getSeoMonthOptions()}</select>
                 <button class="seo-btn" onclick="mrRefresh()" id="mr-refresh-btn" style="white-space:nowrap">Refresh SC Data</button>
               </div>
             </div>
@@ -3559,19 +3597,57 @@ function renderMarketingReview() {
               </div>
             </div>
             <div id="mr-tab-performance" style="display:none">
-              <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden">
-                <table style="width:100%;border-collapse:collapse">
-                  <thead>
-                    <tr style="background:#f9fafb">
-                      <th style="padding:10px 12px;text-align:left;font-size:12px;color:#888">URL</th>
-                      <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:80px">Clicks</th>
-                      <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:100px">Impressions</th>
-                      <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:90px">Avg Pos</th>
-                    </tr>
-                  </thead>
-                  <tbody id="mr-tbody"></tbody>
-                </table>
+              <div id="mr-perf-loading" style="display:none;text-align:center;padding:32px;color:#888;font-size:13px">Loading performance data...</div>
+              <div id="mr-perf-content" style="display:none">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+                  <div style="background:var(--navy);border-radius:12px;padding:20px 22px">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Total Clicks</div>
+                    <div id="mr-perf-clicks" style="font-size:28px;font-weight:700;color:#ff8c42;font-family:inherit">—</div>
+                  </div>
+                  <div style="background:var(--navy);border-radius:12px;padding:20px 22px">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Total Impressions</div>
+                    <div id="mr-perf-impressions" style="font-size:28px;font-weight:700;color:#ff8c42;font-family:inherit">—</div>
+                  </div>
+                  <div style="background:var(--navy);border-radius:12px;padding:20px 22px">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Avg CTR</div>
+                    <div id="mr-perf-ctr" style="font-size:28px;font-weight:700;color:#ff8c42;font-family:inherit">—</div>
+                  </div>
+                </div>
+                <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden;margin-bottom:20px">
+                  <div style="padding:14px 16px;border-bottom:0.5px solid #e0ddd6">
+                    <span id="mr-perf-client-heading" style="font-size:14px;font-weight:600;color:var(--navy)"></span>
+                    <span style="font-size:13px;color:#888"> — Top Queries</span>
+                  </div>
+                  <table style="width:100%;border-collapse:collapse">
+                    <thead>
+                      <tr style="background:#f9fafb">
+                        <th style="padding:10px 12px;text-align:left;font-size:12px;color:#888">Query</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:80px">Clicks</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:100px">Impressions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="mr-queries-tbody"></tbody>
+                  </table>
+                </div>
+                <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden">
+                  <div style="padding:14px 16px;border-bottom:0.5px solid #e0ddd6">
+                    <span style="font-size:14px;font-weight:600;color:var(--navy)">Top URLs</span>
+                    <span style="font-size:13px;color:#888"> — highest impressions</span>
+                  </div>
+                  <table style="width:100%;border-collapse:collapse">
+                    <thead>
+                      <tr style="background:#f9fafb">
+                        <th style="padding:10px 12px;text-align:left;font-size:12px;color:#888">URL</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:80px">Clicks</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:100px">Impressions</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:90px">Avg Pos</th>
+                      </tr>
+                    </thead>
+                    <tbody id="mr-tbody"></tbody>
+                  </table>
+                </div>
               </div>
+              <div id="mr-perf-empty" style="display:block;text-align:center;padding:32px;color:#aaa;font-size:13px">Select a client and click Refresh SC Data to load performance.</div>
             </div>
           </div>
         </div>
@@ -3583,6 +3659,7 @@ function renderMarketingReview() {
 function mrSelectClient(id, name) {
   _mrCurrentClientId = id;
   _mrCurrentClientName = name;
+  _mrPerformanceCache = null;
   document.querySelectorAll('.mr-client-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`#mr-client-list .mr-client-btn[data-id="${id}"]`)?.classList.add('active');
   if (document.getElementById('mr-no-client')) document.getElementById('mr-no-client').style.display = 'none';
@@ -3624,17 +3701,19 @@ async function mrLoadData() {
     if (name) mrAddFinding(name, count, urls);
   });
   const tbody = document.getElementById('mr-tbody');
-  if (!tbody) return;
-  if (scData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;font-size:13px">No data yet. Click Refresh SC Data to pull from BigQuery.</td></tr>';
-  } else {
-    tbody.innerHTML = scData.map(row => `
-      <tr style="border-top:0.5px solid #f0ede8">
-        <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#0066cc">${row.url}</td>
-        <td style="padding:10px 12px;text-align:right;font-size:13px">${row.clicks}</td>
-        <td style="padding:10px 12px;text-align:right;font-size:13px">${row.impressions}</td>
-        <td style="padding:10px 12px;text-align:right;font-size:13px">${Number(row.avg_position).toFixed(1)}</td>
-      </tr>`).join('');
+  if (tbody) {
+    if (scData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;font-size:13px">No data yet. Click Refresh SC Data to pull from BigQuery.</td></tr>';
+    } else {
+      const top3 = [...scData].sort((a, b) => (parseInt(b.clicks) || 0) - (parseInt(a.clicks) || 0)).slice(0, 3);
+      tbody.innerHTML = top3.map(row => `
+        <tr style="border-top:0.5px solid #f0ede8">
+          <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#0066cc">${row.url}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${row.clicks}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${row.impressions}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${Number(row.avg_position).toFixed(1)}</td>
+        </tr>`).join('');
+    }
   }
 }
 
@@ -3870,6 +3949,98 @@ function mrSwitchTab(tab) {
   document.getElementById('mr-tab-btn-performance').style.cssText = tab === 'performance'
     ? 'padding:8px 18px;font-size:13px;font-weight:600;font-family:inherit;border:none;background:var(--navy);color:#fff;cursor:pointer'
     : 'padding:8px 18px;font-size:13px;font-weight:500;font-family:inherit;border:none;background:none;color:#888;cursor:pointer';
+  if (tab === 'performance') mrLoadPerformanceData();
+}
+
+function mrFormatNum(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+
+async function mrLoadPerformanceData() {
+  if (!_mrCurrentClientId) return;
+  if (_mrPerformanceCache) { mrRenderPerformance(_mrPerformanceCache); return; }
+  const month = document.getElementById('mr-month')?.value;
+  if (!month) return;
+  const perfLoading = document.getElementById('mr-perf-loading');
+  const perfContent = document.getElementById('mr-perf-content');
+  const perfEmpty = document.getElementById('mr-perf-empty');
+  if (perfLoading) perfLoading.style.display = 'block';
+  if (perfContent) perfContent.style.display = 'none';
+  if (perfEmpty) perfEmpty.style.display = 'none';
+  const clientId = _mrCurrentClientId;
+  const client = (_makeClientsCache || MAKE_CLIENTS_FALLBACK).find(c => c.id === clientId);
+  const bqDataset = client?.bq_dataset || clientId;
+  const [mm, yyyy] = month.split('-');
+  const fromDate = `${yyyy}-${mm}-01`;
+  const lastDay = new Date(parseInt(yyyy), parseInt(mm), 0).getDate();
+  const toDate = `${yyyy}-${mm}-${String(lastDay).padStart(2,'0')}`;
+  const baseFrom = `FROM \`livetech-website.${bqDataset}.searchdata_url_impression\` WHERE data_date >= '${fromDate}' AND data_date <= '${toDate}' AND search_type = 'WEB'`;
+  const statsSQL = `SELECT SUM(clicks) as total_clicks, SUM(impressions) as total_impressions, ROUND(SAFE_DIVIDE(SUM(clicks), SUM(impressions)) * 100, 2) as avg_ctr ${baseFrom}`;
+  const queriesSQL = `SELECT query, SUM(clicks) as clicks, SUM(impressions) as impressions ${baseFrom} AND is_anonymized_query = false GROUP BY query ORDER BY clicks DESC LIMIT 10`;
+  try {
+    const [statsRes, queriesRes] = await Promise.all([
+      fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/bigquery', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: 'livetech-website', region: 'europe-west2', query: statsSQL })
+      }),
+      fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/bigquery', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: 'livetech-website', region: 'europe-west2', query: queriesSQL })
+      })
+    ]);
+    const [statsData, queriesData] = await Promise.all([statsRes.json(), queriesRes.json()]);
+    const sRow = (statsData.rows || [])[0];
+    const stats = sRow?.f
+      ? { total_clicks: parseInt(sRow.f[0].v) || 0, total_impressions: parseInt(sRow.f[1].v) || 0, avg_ctr: parseFloat(sRow.f[2].v) || 0 }
+      : (sRow || { total_clicks: 0, total_impressions: 0, avg_ctr: 0 });
+    const queries = (queriesData.rows || []).map(r => r.f
+      ? { query: r.f[0].v, clicks: parseInt(r.f[1].v) || 0, impressions: parseInt(r.f[2].v) || 0 }
+      : r
+    );
+    _mrPerformanceCache = { stats, queries };
+    mrRenderPerformance(_mrPerformanceCache);
+  } catch(e) {
+    console.error('mrLoadPerformanceData error:', e);
+    if (perfLoading) perfLoading.style.display = 'none';
+    if (perfEmpty) { perfEmpty.style.display = 'block'; perfEmpty.textContent = 'Error loading performance data: ' + e.message; }
+  }
+}
+
+function mrRenderPerformance({ stats, queries }) {
+  const perfLoading = document.getElementById('mr-perf-loading');
+  const perfContent = document.getElementById('mr-perf-content');
+  const perfEmpty = document.getElementById('mr-perf-empty');
+  if (perfLoading) perfLoading.style.display = 'none';
+  if (stats.total_impressions === 0 && stats.total_clicks === 0) {
+    if (perfEmpty) { perfEmpty.style.display = 'block'; perfEmpty.textContent = 'No performance data found for this period. Click Refresh SC Data to pull from BigQuery.'; }
+    return;
+  }
+  if (perfContent) perfContent.style.display = 'block';
+  if (perfEmpty) perfEmpty.style.display = 'none';
+  const clicks = document.getElementById('mr-perf-clicks');
+  const impressions = document.getElementById('mr-perf-impressions');
+  const ctr = document.getElementById('mr-perf-ctr');
+  if (clicks) clicks.textContent = mrFormatNum(stats.total_clicks);
+  if (impressions) impressions.textContent = mrFormatNum(stats.total_impressions);
+  if (ctr) ctr.textContent = stats.avg_ctr != null ? stats.avg_ctr.toFixed(2) + '%' : '—';
+  const heading = document.getElementById('mr-perf-client-heading');
+  if (heading) heading.textContent = _mrCurrentClientName || '';
+  const qtbody = document.getElementById('mr-queries-tbody');
+  if (qtbody) {
+    if (!queries.length) {
+      qtbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:16px;color:#aaa;font-size:13px">No query data available.</td></tr>';
+    } else {
+      qtbody.innerHTML = queries.map(q => `
+        <tr style="border-top:0.5px solid #f0ede8">
+          <td style="padding:10px 12px;font-size:13px;color:#333">${q.query}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${mrFormatNum(q.clicks)}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${mrFormatNum(q.impressions)}</td>
+        </tr>`).join('');
+    }
+  }
 }
 
 // Render a fixed list of specific URLs (from GSC inspection), all pre-checked
