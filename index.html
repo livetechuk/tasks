@@ -3989,23 +3989,32 @@ async function loadMakeClientsIntoDropdown() {
   let clients = _makeClientsCache;
   if (!clients) {
     try {
-      const res = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/make/data-store-records?dataStoreId=157873&teamId=583475');
-      if (!res.ok) throw new Error('fetch failed ' + res.status);
-      const data = await res.json();
-      console.log('[Make] raw response:', JSON.stringify(data).slice(0, 500));
-      // Make.com v2 returns { data: [{key, value}] } or { records: [...] }
-      const records = Array.isArray(data.data) ? data.data
-        : data.records || data.data?.records || (Array.isArray(data) ? data : []);
-      console.log('[Make] records count:', records.length);
-      if (records.length) {
-        console.log('[Make] first record sample:', JSON.stringify(records[0]));
-        const mapped = records.map(r => {
+      // Fetch all pages from Make.com datastore
+      const allRecords = [];
+      let offset = 0;
+      const limit = 100;
+      while (true) {
+        const res = await fetch(
+          CLAUDE_PROXY.replace(/\/$/, '') +
+          `/make/data-store-records?dataStoreId=157873&teamId=583475&limit=${limit}&offset=${offset}`
+        );
+        if (!res.ok) throw new Error('fetch failed ' + res.status);
+        const data = await res.json();
+        const page = Array.isArray(data.data) ? data.data
+          : data.records || data.data?.records || (Array.isArray(data) ? data : []);
+        allRecords.push(...page);
+        // Stop if this page was smaller than limit (last page)
+        if (page.length < limit) break;
+        offset += limit;
+        if (offset > 2000) break; // safety cap
+      }
+      console.log('[Make] total records fetched:', allRecords.length);
+      if (allRecords.length) {
+        const mapped = allRecords.map(r => {
           const v = r.value || r.data || r;
-          // Detect bq_dataset by value pattern (all datasets start with searchconsole_)
           const bq = v.bq_dataset || v.dataset || v.bigquery_dataset || v.bq
             || Object.values(v).find(val => typeof val === 'string' && val.startsWith('searchconsole_'))
             || '';
-          // Detect name: try known keys, then any short non-url string that isn't the dataset
           const name = v.name || v.client_name || v['Client Name'] || v['Name'] || v.title || v.label
             || Object.values(v).find(val => typeof val === 'string' && val !== bq && !val.startsWith('http') && val.length > 1 && val.length < 60)
             || r.key || bq;
