@@ -172,22 +172,22 @@
   .cal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid #e8e8e5; }
   .cal-title { font-size: 16px; font-weight: 600; }
   .cal-nav { background: none; border: 0.5px solid #e0ddd6; border-radius: 8px; padding: 5px 12px; font-size: 13px; color: #888; cursor: pointer; font-family: inherit; }
-  .cal-nav:hover { border-color: #4caf82; color: #4caf82; }
+  .cal-nav:hover { border-color: var(--coral); color: var(--coral); }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
   .cal-dow { font-size: 11px; font-weight: 600; color: #aaa; text-align: center; padding: 8px 0; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.5px solid #e8e8e5; }
   .cal-cell { min-height: 88px; border-right: 0.5px solid #e8e8e5; border-bottom: 0.5px solid #e8e8e5; padding: 6px 5px; cursor: pointer; transition: background 0.1s; }
   .cal-cell:nth-child(7n) { border-right: none; }
   .cal-cell:hover { background: #fafaf8; }
-  .cal-cell.today { background: #f0fbf5; }
+  .cal-cell.today { background: rgba(20,19,79,0.04); }
   .cal-cell.other-month .cal-day-num { color: #ccc; }
   .cal-day-num { font-size: 12px; font-weight: 600; color: #888; margin-bottom: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
-  .cal-cell.today .cal-day-num { background: #4caf82; color: #fff; }
-  .cal-event { font-size: 10px; background: #eef7f2; color: #2d7a57; border-radius: 4px; padding: 2px 5px; margin-bottom: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; line-height: 1.4; }
+  .cal-cell.today .cal-day-num { background: var(--navy); color: #fff; }
+  .cal-event { font-size: 10px; background: rgba(20,19,79,0.07); color: var(--navy); border-radius: 4px; padding: 2px 5px; margin-bottom: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; line-height: 1.4; }
   .cal-event.imp-high   { background: #fde8e8; color: #c0392b; }
   .cal-event.imp-medium { background: #fef0d8; color: #d68910; }
   .cal-event.imp-low    { background: #fefde0; color: #b7950b; }
   .cal-more { font-size: 10px; color: #aaa; padding: 1px 5px; cursor: pointer; }
-  .cal-more:hover { color: #4caf82; }
+  .cal-more:hover { color: var(--coral); }
   .cal-add-hint { font-size: 10px; color: #ddd; display: none; }
   .cal-cell:hover .cal-add-hint { display: block; }
 
@@ -565,7 +565,7 @@
   .sidebar-username { font-size:13px; color:rgba(255,255,255,0.8); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sidebar-signout { display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; border-radius:6px; padding:8px 10px; font-size:12px; font-family:inherit; color:rgba(255,255,255,0.4); cursor:pointer; text-align:left; }
   .sidebar-signout:hover { color:rgba(255,255,255,0.75); background:rgba(255,255,255,0.06); }
-  .main-area { margin-left:220px; min-height:100vh; padding:28px 32px 60px; max-width:calc(100vw - 220px); }
+  .main-area { margin-left:220px; min-height:100vh; padding:28px 32px 60px; width:calc(100vw - 220px); box-sizing:border-box; }
   .main-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
   .main-title { font-size:20px; font-weight:600; color:var(--navy); }
   .main-date { font-size:13px; color:#888; margin-top:3px; }
@@ -610,7 +610,7 @@
   .day-time-input:focus { border-color: #4caf82; }
 
   /* SEO Meeting Notes Views */
-  .seo-view-wrap { padding: 0; }
+  .seo-view-wrap { padding: 0; width: 100%; }
   .seo-controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .seo-ctrl-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 180px; }
   .seo-ctrl-group label { font-size: 12px; font-weight: 600; color: #888; }
@@ -1055,7 +1055,8 @@ function renderList(loading){
   const done=allItems.filter(i=>i.done);
   const pct=items.length?Math.round(done.length/items.length*100):0;
   const isTaskView=['list','kanban','calendar'].includes(currentView);
-  const isTimesheetsActive=['timesheets','workload'].includes(currentView);
+  const isTasksGroupActive = isTaskView || currentView === 'workload';
+  const isTimesheetsActive = currentView === 'timesheets';
   const isSideView=['projects','marketing-review','meeting-notes','admin-panel','timesheets','workload'].includes(currentView);
   const tv=currentView;
 
@@ -1080,16 +1081,16 @@ function renderList(loading){
         </div>
         <nav class="sidebar-nav">
           <div class="sidebar-section-label">Navigation</div>
-          <button class="sidebar-item${isTaskView?' active':''}" onclick="setView('list')">${icoTasks} Tasks</button>
-          ${isTaskView?`
+          <button class="sidebar-item${isTasksGroupActive?' active':''}" onclick="setView('list')">${icoTasks} Tasks</button>
+          ${isTasksGroupActive?`
             <button class="sidebar-subitem${tv==='list'?' active':''}" onclick="setView('list')">List</button>
             <button class="sidebar-subitem${tv==='kanban'?' active':''}" onclick="setView('kanban')">Kanban</button>
             <button class="sidebar-subitem${tv==='calendar'?' active':''}" onclick="setView('calendar')">Calendar</button>
+            <button class="sidebar-subitem${tv==='workload'?' active':''}" onclick="setView('workload')">Schedule</button>
           `:''}
           <button class="sidebar-item${isTimesheetsActive?' active':''}" onclick="setView('timesheets')">${icoTime} Timesheets</button>
           ${isTimesheetsActive?`
             <button class="sidebar-subitem${tv==='timesheets'?' active':''}" onclick="setView('timesheets')">My Time</button>
-            <button class="sidebar-subitem${tv==='workload'?' active':''}" onclick="setView('workload')">Schedule</button>
           `:''}
           ${CLICKUP_USERS.includes(currentUser)?`<button class="sidebar-item${tv==='projects'?' active':''}" onclick="setView('projects')">${icoProj} Projects</button>`:''}
           ${(currentUser===SEO_MARKETING_HEAD||currentUser==='Holly')?`<button class="sidebar-item${tv==='marketing-review'?' active':''}" onclick="setView('marketing-review')">${icoMR} Marketing Review</button>`:''}
@@ -2489,7 +2490,8 @@ async function addTimeSession(item,session){
       showError("Save returned no rows. Check Supabase UPDATE policy for the tasks table.");
       return;
     }
-    items=items.map(i=>i.id===item.id?saved[0]:i);
+    if(isTeamView()){teamViewItems=teamViewItems.map(i=>i.id===item.id?saved[0]:i);}
+    else{items=items.map(i=>i.id===item.id?saved[0]:i);}
     renderList();
   }catch(e){
     showError("Could not save tracked time: "+e.message);
@@ -2743,9 +2745,9 @@ function renderTimesheetsView(){
   return `<div class="ts-wrap">
     <div class="ts-toolbar">
       ${["today","week","month","all"].map(f=>`<button class="ts-filter-btn${tsFilter===f?" active":""}" onclick="setTsFilter('${f}')">${{today:"Today",week:"This week",month:"This month",all:"All time"}[f]}</button>`).join("")}
-      ${!isTeamView()?`<button class="ts-add-manual-btn" onclick="openManual()">➕ Log time</button>`:""}
+      ${(!isTeamView()||currentUser==='Holly'||currentUser===SEO_MARKETING_HEAD)?`<button class="ts-add-manual-btn" onclick="openManual()">➕ Log time</button>`:""}
     </div>
-    ${filtered.length===0?`<div class="ts-empty">No time logged for ${filterLabel[tsFilter].toLowerCase()}.<br><br>${!isTeamView()?`<button class="ts-add-manual-btn" onclick="openManual()">Log time manually</button>`:""}</div>`:`
+    ${filtered.length===0?`<div class="ts-empty">No time logged for ${filterLabel[tsFilter].toLowerCase()}.<br><br>${(!isTeamView()||currentUser==='Holly'||currentUser===SEO_MARKETING_HEAD)?`<button class="ts-add-manual-btn" onclick="openManual()">Log time manually</button>`:""}</div>`:`
     ${dayBlocks}
     <div class="ts-summary">
       <div class="ts-summary-title">Summary — ${filterLabel[tsFilter]}</div>
@@ -2783,7 +2785,8 @@ function renderTimesheetsView(){
     const mtByClient={};
     mtFiltered.forEach(e=>{if(!mtByClient[e.client_id])mtByClient[e.client_id]={name:e.client_name,h:0};mtByClient[e.client_id].h=Math.round((mtByClient[e.client_id].h+e.hours)*100)/100;});
     const mtTotal=Math.round(mtFiltered.reduce((a,e)=>a+e.hours,0)*100)/100;
-    const logForm = !isTeamView()?`
+    const canEditMT = !isTeamView() || currentUser === 'Holly' || currentUser === SEO_MARKETING_HEAD;
+    const logForm = canEditMT?`
       <div class="mt-log-form">
         <div class="mt-form-row">
           <select id="mt-client-sel" class="mt-select"><option value="">Select client...</option>${mtClients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
@@ -2798,7 +2801,7 @@ function renderTimesheetsView(){
       const dayH=Math.round(entries.reduce((a,e)=>a+e.hours,0)*100)/100;
       const d2=new Date(date+'T00:00:00');const diff=Math.round((td-d2)/86400000);
       const lbl=diff===0?'Today':diff===1?'Yesterday':d2.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'});
-      return `<div class="ts-day-block"><div class="ts-day-header"><span class="ts-day-name${diff===0?' today-name':''}">${lbl}</span><span class="ts-day-total">${fmtHours(dayH)}</span></div><div class="ts-entries">${entries.map(e=>`<div class="ts-entry"><div class="ts-entry-dot" style="background:var(--coral)"></div><div class="ts-entry-task" style="cursor:default">${esc(e.client_name)}</div>${e.note?`<span class="ts-entry-note">${esc(e.note)}</span>`:''}<span class="ts-entry-time">${fmtHours(e.hours)}</span>${!isTeamView()?`<button class="ts-entry-del" onclick="deleteMarketingTime('${e.id}')">&times;</button>`:''}</div>`).join('')}</div></div>`;
+      return `<div class="ts-day-block"><div class="ts-day-header"><span class="ts-day-name${diff===0?' today-name':''}">${lbl}</span><span class="ts-day-total">${fmtHours(dayH)}</span></div><div class="ts-entries">${entries.map(e=>`<div class="ts-entry"><div class="ts-entry-dot" style="background:var(--coral)"></div><div class="ts-entry-task" style="cursor:default">${esc(e.client_name)}</div>${e.note?`<span class="ts-entry-note">${esc(e.note)}</span>`:''}<span class="ts-entry-time">${fmtHours(e.hours)}</span>${canEditMT?`<button class="ts-entry-del" onclick="deleteMarketingTime('${e.id}')">&times;</button>`:''}</div>`).join('')}</div></div>`;
     }).join('');
     const mtSummary=mtFiltered.length?`<div class="ts-summary" style="margin-top:12px"><div class="ts-summary-title">Client Summary — ${filterLabel[tsFilter]}</div>${Object.values(mtByClient).sort((a,b)=>b.h-a.h).map(c=>`<div class="ts-summary-row"><div class="ts-entry-dot" style="background:var(--coral);flex-shrink:0;width:8px;height:8px;border-radius:50%"></div><span class="ts-summary-task" style="margin-left:8px">${esc(c.name)}</span><span class="ts-summary-h">${fmtHours(c.h)}</span></div>`).join('')}<div class="ts-total-row"><span class="ts-total-label">Total client time</span><span class="ts-total-val">${fmtHours(mtTotal)||'0h'}</span></div></div>`:'' ;
     return `<div class="mt-section-title">Client Time</div>${logForm}${mtBlocks||`<div class="ts-empty" style="padding:1.5rem 0">No client time logged for ${filterLabel[tsFilter].toLowerCase()}.</div>`}${mtSummary}`;
@@ -2831,7 +2834,7 @@ async function deleteSession(itemId,date,entryIdx){
 
 // ── Manual time entry ─────────────────────────────────────
 function openManual(prefillItemId){
-  const allActive=items.filter(i=>!i.done);
+  const allActive=(isTeamView()?teamViewItems:items).filter(i=>!i.done);
   const sel=document.getElementById("manual-task-sel");
   if(!sel) return;
   sel.innerHTML=allActive.map(i=>`<option value="${i.id}"${i.id===prefillItemId?" selected":""}>${esc(i.text)}</option>`).join("");
@@ -2852,7 +2855,7 @@ async function saveManualEntry(){
   const hoursRaw=parseFloat(document.getElementById("manual-hours").value);
   const note=document.getElementById("manual-note").value.trim();
   if(!itemId||!date||!hoursRaw||hoursRaw<=0){showError("Please fill in task, date and hours.");return;}
-  const itemSnap={...items.find(i=>i.id===itemId)};
+  const itemSnap={...(isTeamView()?teamViewItems:items).find(i=>i.id===itemId)};
   if(!itemSnap.id){showError("Task not found.");return;}
   closeManual();
   currentView="timesheets"; // switch view before renderList so it shows correctly after save
@@ -3832,7 +3835,7 @@ async function mrRefresh() {
   const sql = 'SELECT url, SUM(clicks) as clicks, SUM(impressions) as impressions, ROUND(AVG(sum_position),1) as avg_position ' +
     `FROM \`livetech-website.${bqDataset}.searchdata_url_impression\` ` +
     `WHERE data_date >= '${fromDate}' AND data_date <= '${toDate}' AND search_type = 'WEB' ` +
-    'GROUP BY url ORDER BY impressions DESC LIMIT 50';
+    'GROUP BY url ORDER BY impressions DESC LIMIT 100';
   try {
     const res = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/bigquery', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -4689,11 +4692,11 @@ async function loadMakeClientsIntoDropdown() {
     }
   }
 
-  // Meeting Notes sidebar (Sarah/Holly see all grouped; others see own clients)
+  // Meeting Notes sidebar — admins see all when browsing own view; team-view shows only the viewed user's clients
   const mnList = document.getElementById('mn-client-list');
   if (mnList) {
     const mnViewingUser = isTeamView() ? teamViewUser : currentUser;
-    const isAdmin = currentUser === SEO_MARKETING_HEAD || currentUser === 'Holly';
+    const isAdmin = (currentUser === SEO_MARKETING_HEAD || currentUser === 'Holly') && !isTeamView();
     const filtered = isAdmin
       ? clients
       : clients.filter(c => !c.assignee || c.assignee.toLowerCase().split('@')[0] === mnViewingUser.toLowerCase());
