@@ -956,14 +956,27 @@ const KANBAN_COLS=[
 // ── Team switcher (dept heads only) ──────────────────────
 function renderTeamSwitcher(){
   const members=getTeamMembers();
-  if(!members.length) return "";
-  return `<div style="position:relative;display:inline-block">
-    <select class="switch-btn" style="cursor:pointer;padding-right:20px"
-      onchange="if(this.value)loadTeamMember(this.value);this.value=''">
-      <option value="">👥 View team...</option>
-      ${members.map(m=>`<option value="${m}">${m}</option>`).join("")}
-    </select>
-  </div>`;
+  let html = "";
+  if(members.length) {
+    html += `<div style="position:relative;display:inline-block">
+      <select class="switch-btn" style="cursor:pointer;padding-right:20px"
+        onchange="if(this.value)loadTeamMember(this.value);this.value=''">
+        <option value="">👥 View team...</option>
+        ${members.map(m=>`<option value="${m}">${m}</option>`).join("")}
+      </select>
+    </div>`;
+  }
+  // Admin (Holly) can view as any user
+  if(currentUser === "Holly") {
+    html += `<div style="position:relative;display:inline-block;margin-left:10px">
+      <select class="switch-btn" style="cursor:pointer;padding-right:20px"
+        onchange="if(this.value)loadTeamMember(this.value);this.value=''">
+        <option value="">👑 View as...</option>
+        ${TEAM.filter(n=>n!==currentUser).map(n=>`<option value="${n}">${n}</option>`).join("")}
+      </select>
+    </div>`;
+  }
+  return html;
 }
 
 // ── Pick screen ───────────────────────────────────────────
