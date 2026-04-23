@@ -3415,19 +3415,19 @@ async function loadScData(clientId, month) {
   } catch(e) { console.error('loadScData error:', e); return []; }
 }
 
+// Route Supabase writes through the proxy (service role key bypasses RLS)
+async function supabaseWrite(table, data, prefer = 'resolution=merge-duplicates') {
+  return fetch(`${CLAUDE_PROXY}/supabase-write`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ table, data, prefer })
+  });
+}
+
 // Save SC selections to Supabase
 async function saveScSelections(month, clientId, selectedUrls) {
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/sc_selections`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates'
-      },
-      body: JSON.stringify({ month, client_id: clientId, selected_urls: selectedUrls, selected_by: currentUser.toLowerCase() + '@livetech.co.uk' })
-    });
+    await supabaseWrite('sc_selections', { month, client_id: clientId, selected_urls: selectedUrls, selected_by: currentUser.toLowerCase() + '@livetech.co.uk' });
   } catch(e) { console.error('saveScSelections error:', e); }
 }
 
@@ -3446,19 +3446,13 @@ async function loadMeetingNoteData(month, clientId) {
 // Save meeting note to Supabase
 async function saveMeetingNoteData(month, clientId, clientName, fields) {
   const email = currentUser.toLowerCase() + '@livetech.co.uk';
-  const doPost = async (payload) => fetch(`${SUPABASE_URL}/rest/v1/meeting_notes`, {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-    body: JSON.stringify(payload)
-  });
   try {
     const payload = { month, client_id: clientId, client_name: clientName, assigned_to: email, ...fields };
-    let res = await doPost(payload);
+    let res = await supabaseWrite('meeting_notes', payload);
     if (res.ok) return true;
     if (res.status === 400 || res.status === 422) {
       const { meeting_date, planned_work, wp_health, ...core } = payload;
-      res = await doPost(core);
+      res = await supabaseWrite('meeting_notes', core);
       return res.ok;
     }
     return false;
@@ -3601,11 +3595,7 @@ async function mrRefresh() {
     if (!rawRows.length) { showSeoMsg('mr-msg', 'No data found in BigQuery for this period.', 'info'); return; }
     const rows = rawRows.map(r => r.f ? { url: r.f[0].v, clicks: r.f[1].v, impressions: r.f[2].v, avg_position: r.f[3].v } : r);
     const records = rows.map(r => ({ month, client_id: clientId, url: r.url, clicks: parseInt(r.clicks)||0, impressions: parseInt(r.impressions)||0, avg_position: parseFloat(r.avg_position)||0, source: 'search-console' }));
-    const upsert = await fetch(`${SUPABASE_URL}/rest/v1/sc_data`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify(records)
-    });
+    const upsert = await supabaseWrite('sc_data', records);
     if (!upsert.ok) throw new Error(`Supabase upsert ${upsert.status}`);
     showSeoMsg('mr-msg', `Synced ${records.length} URLs.`, 'success');
     await mrLoadData();
@@ -4049,30 +4039,40 @@ async function loadMakeClientsIntoDropdown() {
     }
   }
 
-  // Marketing Review sidebar — grouped by assignee (Sarah sees all, grouped)
-  const mrList = document.getElementById('mr-client-list');
-  if (mrList) {
+  // Extract first name from email or raw string (e.g. "megan@livetech.co.uk" → "Megan")
+  const toFirstName = (str) => {
+    const raw = str.includes('@') ? str.split('@')[0] : str;
+    return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+  };
+
+  const buildGroupedSidebar = (list, onclickFn) => {
     const grouped = {};
-    clients.forEach(c => {
-      const key = c.assignee || 'Unassigned';
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(c);
+    list.forEach(c => { const k = c.assignee || 'Unassigned'; if (!grouped[k]) grouped[k] = []; grouped[k].push(c); });
+    const order = ['sarah','charlie','megan','sabrina'];
+    const keys = Object.keys(grouped).sort((a,b) => {
+      const an = a.toLowerCase().split('@')[0], bn = b.toLowerCase().split('@')[0];
+      const ai = order.indexOf(an), bi = order.indexOf(bn);
+      return (ai===-1?99:ai)-(bi===-1?99:bi);
     });
-    const assigneeOrder = ['Sarah','Charlie','Megan','Sabrina','Unassigned'];
-    const sortedKeys = Object.keys(grouped).sort((a,b) => {
-      const ai = assigneeOrder.indexOf(a); const bi = assigneeOrder.indexOf(b);
-      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-    });
-    mrList.innerHTML = sortedKeys.map(assignee => `
+    return keys.map(assignee => `
       <div class="mn-group">
-        <button class="mn-group-toggle" onclick="toggleSidebarGroup(this)">${assignee} <span class="mn-group-caret">▾</span></button>
-        <div class="mn-group-clients">
+        <button class="mn-group-toggle" onclick="toggleSidebarGroup(this)">${toFirstName(assignee)} <span class="mn-group-caret">▸</span></button>
+        <div class="mn-group-clients" style="display:none">
           ${grouped[assignee].map(c =>
-            `<button class="mn-client-btn mr-client-btn" data-id="${c.id}" onclick='mrSelectClient(${JSON.stringify(c.id)},${JSON.stringify(c.name)})'>${c.name}</button>`
+            `<button class="mn-client-btn ${onclickFn==='mrSelectClient'?'mr-client-btn':''}" data-id="${c.id}" onclick='${onclickFn}(${JSON.stringify(c.id)},${JSON.stringify(c.name)})'>${c.name}</button>`
           ).join('')}
         </div>
       </div>`).join('');
-    if (_mrCurrentClientId) document.querySelector(`#mr-client-list .mr-client-btn[data-id="${_mrCurrentClientId}"]`)?.classList.add('active');
+  };
+
+  // Marketing Review sidebar — grouped by assignee (Sarah sees all)
+  const mrList = document.getElementById('mr-client-list');
+  if (mrList) {
+    mrList.innerHTML = buildGroupedSidebar(clients, 'mrSelectClient');
+    if (_mrCurrentClientId) {
+      const activeBtn = document.querySelector(`#mr-client-list .mr-client-btn[data-id="${_mrCurrentClientId}"]`);
+      if (activeBtn) { activeBtn.classList.add('active'); activeBtn.closest('.mn-group-clients').style.display='block'; activeBtn.closest('.mn-group').querySelector('.mn-group-caret').textContent='▾'; }
+    }
   }
 
   // Meeting Notes sidebar (filtered by assignee for non-Sarah; Sarah sees all grouped)
@@ -4080,25 +4080,11 @@ async function loadMakeClientsIntoDropdown() {
   if (mnList) {
     const filtered = currentUser === SEO_MARKETING_HEAD
       ? clients
-      : clients.filter(c => !c.assignee || c.assignee === currentUser);
+      : clients.filter(c => !c.assignee || c.assignee.toLowerCase().split('@')[0] === currentUser.toLowerCase());
     if (filtered.length) {
       if (currentUser === SEO_MARKETING_HEAD) {
-        // Sarah: grouped by assignee
-        const grouped = {};
-        filtered.forEach(c => { const k = c.assignee || 'Unassigned'; if (!grouped[k]) grouped[k] = []; grouped[k].push(c); });
-        const order = ['Sarah','Charlie','Megan','Sabrina','Unassigned'];
-        const keys = Object.keys(grouped).sort((a,b) => { const ai=order.indexOf(a),bi=order.indexOf(b); return (ai===-1?99:ai)-(bi===-1?99:bi); });
-        mnList.innerHTML = keys.map(assignee => `
-          <div class="mn-group">
-            <button class="mn-group-toggle" onclick="toggleSidebarGroup(this)">${assignee} <span class="mn-group-caret">▾</span></button>
-            <div class="mn-group-clients">
-              ${grouped[assignee].map(c =>
-                `<button class="mn-client-btn" data-id="${c.id}" onclick='mnSelectClient(${JSON.stringify(c.id)},${JSON.stringify(c.name)})'>${c.name}</button>`
-              ).join('')}
-            </div>
-          </div>`).join('');
+        mnList.innerHTML = buildGroupedSidebar(filtered, 'mnSelectClient');
       } else {
-        // Other team members: flat list of their own clients
         mnList.innerHTML = filtered.map(c =>
           `<button class="mn-client-btn" data-id="${c.id}" onclick='mnSelectClient(${JSON.stringify(c.id)},${JSON.stringify(c.name)})'>${c.name}</button>`
         ).join('');
