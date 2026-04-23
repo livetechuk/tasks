@@ -1077,8 +1077,8 @@ function renderList(loading){
           `:''}
           <button class="sidebar-item${tv==='timesheets'?' active':''}" onclick="setView('timesheets')">${icoTime} Timesheets</button>
           ${CLICKUP_USERS.includes(currentUser)?`<button class="sidebar-item${tv==='projects'?' active':''}" onclick="setView('projects')">${icoProj} Projects</button>`:''}
-          ${currentUser===SEO_MARKETING_HEAD?`<button class="sidebar-item${tv==='marketing-review'?' active':''}" onclick="setView('marketing-review')">${icoMR} Marketing Review</button>`:''}
-          ${SEO_MARKETING_TEAM.includes(currentUser)?`<button class="sidebar-item${tv==='meeting-notes'?' active':''}" onclick="setView('meeting-notes')">${icoNotes} Meeting Notes</button>`:''}
+          ${(currentUser===SEO_MARKETING_HEAD||currentUser==='Holly')?`<button class="sidebar-item${tv==='marketing-review'?' active':''}" onclick="setView('marketing-review')">${icoMR} Marketing Review</button>`:''}
+          ${(SEO_MARKETING_TEAM.includes(currentUser)||currentUser==='Holly')?`<button class="sidebar-item${tv==='meeting-notes'?' active':''}" onclick="setView('meeting-notes')">${icoNotes} Meeting Notes</button>`:''}
           ${currentUser==='Holly'?`<button class="sidebar-item${tv==='admin-panel'?' active':''}" onclick="setView('admin-panel')">${icoAdmin} Admin</button>`:''}
         </nav>
         <div class="sidebar-footer">
