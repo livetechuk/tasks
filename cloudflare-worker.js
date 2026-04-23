@@ -257,29 +257,11 @@ async function handleMake(request, env, url, path) {
   const qs       = url.search;
   const body     = ['GET','HEAD'].includes(request.method) ? undefined : await request.text();
 
-  // Try both auth header formats × all regions (6 combinations)
-  // Older Make.com (Integromat) used X-Imt-Api-Key; newer uses Authorization: Token
-  const authHeaders = [
-    { 'Authorization': `Token ${env.MAKE_API_TOKEN}`, 'Content-Type': 'application/json' },
-    { 'X-Imt-Api-Key': env.MAKE_API_TOKEN, 'Content-Type': 'application/json' },
-  ];
-  const bases = ['https://eu1.make.com/api/v2', 'https://us1.make.com/api/v2', 'https://us2.make.com/api/v2'];
-  let lastStatus = 0, lastBody = '';
-
-  for (const headers of authHeaders) {
-    for (const base of bases) {
-      const res  = await fetch(`${base}/${makePath}${qs}`, { method: request.method, headers, body });
-      const text = await res.text();
-      if (res.status !== 401) {
-        return new Response(text, { status: res.status, headers: { ...CORS, 'Content-Type': 'application/json' } });
-      }
-      lastStatus = res.status;
-      lastBody   = text;
-    }
-  }
-
-  return new Response(JSON.stringify({ error: `Make.com auth failed on all regions/formats`, detail: lastBody }), {
-    status: lastStatus,
+  // Account is on eu2.make.com — confirmed via /make-debug
+  const headers = { 'Authorization': `Token ${env.MAKE_API_TOKEN}`, 'Content-Type': 'application/json' };
+  const res     = await fetch(`https://eu2.make.com/api/v2/${makePath}${qs}`, { method: request.method, headers, body });
+  return new Response(await res.text(), {
+    status: res.status,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 }
@@ -289,35 +271,31 @@ async function handleMakeDebug(request, env) {
   const token = env.MAKE_API_TOKEN || '';
   const results = {};
 
-  const bases = [
-    'https://eu1.make.com/api/v2',
-    'https://eu2.make.com/api/v2',
-    'https://us1.make.com/api/v2',
-    'https://us2.make.com/api/v2',
-    'https://make.com/api/v2',
-  ];
+  const base    = 'https://eu2.make.com/api/v2';
+  const headers = { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' };
 
-  // Test each base with three auth methods
-  for (const base of bases) {
-    const variants = [
-      [`Token header`,   `${base}/users/me`,               { 'Authorization': `Token ${token}` }],
-      [`X-Imt-Api-Key`,  `${base}/users/me`,               { 'X-Imt-Api-Key': token }],
-      [`query param`,    `${base}/users/me?api_key=${token}`, {}],
-    ];
-    for (const [label, url, headers] of variants) {
-      const key = `${label} @ ${base}`;
-      try {
-        const r = await fetch(url, { headers: { 'Content-Type': 'application/json', ...headers } });
-        const body = (await r.text()).slice(0, 200);
-        results[key] = { status: r.status, body };
-        if (r.status === 200) {
-          // Auth works — now test data store
-          const ds = await fetch(`${base}/data-stores/157873/data-store-records?teamId=583475&limit=2`, { headers: { ...headers } });
-          results[`DATASTORE via ${label} @ ${base}`] = { status: ds.status, body: (await ds.text()).slice(0, 300) };
-        }
-      } catch(e) { results[key] = { error: e.message }; }
-    }
-  }
+  // List all data stores so we can find the correct ID
+  try {
+    const r = await fetch(`${base}/data-stores`, { headers });
+    results['list data stores (no teamId)'] = { status: r.status, body: (await r.text()).slice(0, 1000) };
+  } catch(e) { results['list data stores'] = { error: e.message }; }
+
+  try {
+    const r = await fetch(`${base}/data-stores?teamId=583475`, { headers });
+    results['list data stores teamId=583475'] = { status: r.status, body: (await r.text()).slice(0, 1000) };
+  } catch(e) { results['list data stores teamId=583475'] = { error: e.message }; }
+
+  // Also list teams to find correct teamId
+  try {
+    const r = await fetch(`${base}/teams`, { headers });
+    results['list teams'] = { status: r.status, body: (await r.text()).slice(0, 500) };
+  } catch(e) { results['list teams'] = { error: e.message }; }
+
+  // Also try organizations
+  try {
+    const r = await fetch(`${base}/organizations`, { headers });
+    results['list organizations'] = { status: r.status, body: (await r.text()).slice(0, 500) };
+  } catch(e) { results['list organizations'] = { error: e.message }; }
 
   return new Response(JSON.stringify({
     tokenLength: token.length,
