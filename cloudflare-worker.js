@@ -255,24 +255,29 @@ async function handleMake(request, env, url, path) {
   const makePath = path.replace(/^\/make\//, '');
   const qs       = url.search;
   const body     = ['GET','HEAD'].includes(request.method) ? undefined : await request.text();
-  const headers  = { 'Authorization': `Token ${env.MAKE_API_TOKEN}`, 'Content-Type': 'application/json' };
 
-  // Try eu1 first, fall back to us1 and us2 for accounts on different regions
+  // Try both auth header formats × all regions (6 combinations)
+  // Older Make.com (Integromat) used X-Imt-Api-Key; newer uses Authorization: Token
+  const authHeaders = [
+    { 'Authorization': `Token ${env.MAKE_API_TOKEN}`, 'Content-Type': 'application/json' },
+    { 'X-Imt-Api-Key': env.MAKE_API_TOKEN, 'Content-Type': 'application/json' },
+  ];
   const bases = ['https://eu1.make.com/api/v2', 'https://us1.make.com/api/v2', 'https://us2.make.com/api/v2'];
   let lastStatus = 0, lastBody = '';
 
-  for (const base of bases) {
-    const res  = await fetch(`${base}/${makePath}${qs}`, { method: request.method, headers, body });
-    const text = await res.text();
-    if (res.status !== 401) {
-      return new Response(text, { status: res.status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+  for (const headers of authHeaders) {
+    for (const base of bases) {
+      const res  = await fetch(`${base}/${makePath}${qs}`, { method: request.method, headers, body });
+      const text = await res.text();
+      if (res.status !== 401) {
+        return new Response(text, { status: res.status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+      lastStatus = res.status;
+      lastBody   = text;
     }
-    lastStatus = res.status;
-    lastBody   = text;
   }
 
-  // All regions returned 401 — return last error with detail for debugging
-  return new Response(JSON.stringify({ error: `Make.com auth failed on all regions`, detail: lastBody }), {
+  return new Response(JSON.stringify({ error: `Make.com auth failed on all regions/formats`, detail: lastBody }), {
     status: lastStatus,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
