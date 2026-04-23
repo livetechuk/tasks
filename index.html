@@ -4612,60 +4612,23 @@ async function loadMakeClientsIntoDropdown() {
   let clients = _makeClientsCache;
   if (!clients) {
     try {
-      // Fetch all pages from Make.com datastore
-      const allRecords = [];
-      let offset = 0;
-      const limit = 100;
-      while (true) {
-        const res = await fetch(
-          CLAUDE_PROXY.replace(/\/$/, '') +
-          `/make/data-stores/157873/data-store-records?teamId=583475&limit=${limit}&offset=${offset}`
-        );
-        if (!res.ok) {
-          const errBody = await res.text();
-          console.error('[Make] API error', res.status, errBody);
-          throw new Error('fetch failed ' + res.status + ': ' + errBody.slice(0, 200));
-        }
-        const data = await res.json();
-        const page = Array.isArray(data.data) ? data.data
-          : data.records || data.data?.records || (Array.isArray(data) ? data : []);
-        allRecords.push(...page);
-        // Stop if this page was smaller than limit (last page)
-        if (page.length < limit) break;
-        offset += limit;
-        if (offset > 2000) break; // safety cap
-      }
-      console.log('[Make] total records fetched:', allRecords.length);
-      if (allRecords.length) {
-        // Log the first raw record so we can identify field names if needed
-        if (allRecords[0]) console.log('[Make] first raw record keys:', JSON.stringify(allRecords[0]));
-        const SEO_NAMES = ['sarah','charlie','megan','sabrina'];
-        const mapped = allRecords.map(r => {
-          const v = r.value || r.data || r;
-          const bq = v.bq_dataset || v.dataset || v.bigquery_dataset || v.bq
-            || Object.values(v).find(val => typeof val === 'string' && val.startsWith('searchconsole_'))
-            || '';
-          const name = v.name || v.client_name || v['Client Name'] || v['Name'] || v.title || v.label
-            || Object.values(v).find(val => typeof val === 'string' && val !== bq && !val.startsWith('http') && val.length > 1 && val.length < 60)
-            || r.key || bq;
-          // Try named fields first
-          let assignee = v.assignee || v.Assignee || v.assigned_to || v.assigned || v.owner
-            || v.user || v.team_member || v['Assigned To'] || v['assigned_to'] || v['User']
-            || v.account_manager || v['Account Manager'] || v.responsible || v.member || '';
-          // If still empty, scan every string field for a team member name or email
-          if (!assignee) {
-            const allVals = Object.values(v).filter(val => typeof val === 'string');
-            assignee = allVals.find(val => SEO_NAMES.some(n => val.toLowerCase().includes(n))) || '';
-          }
-          return { id: bq || r.key, name, bq_dataset: bq, assignee, drive_folder_id: v.drive_folder_id || '' };
-        }).filter(c => c.id);
-        if (mapped.length) {
-          clients = mapped;
-          _makeClientsCache = clients;
-        } else throw new Error('no valid records after mapping');
-      } else throw new Error('empty response');
+      // Primary: load from Supabase seo_clients table
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/seo_clients?order=name.asc&limit=500`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      if (!res.ok) throw new Error('Supabase seo_clients ' + res.status);
+      const rows = await res.json();
+      if (!Array.isArray(rows) || rows.length === 0) throw new Error('seo_clients table is empty — populate it first');
+      clients = rows.map(r => ({
+        id: r.id, name: r.name, bq_dataset: r.bq_dataset,
+        assignee: r.assignee || '', drive_folder_id: r.drive_folder_id || '',
+        gsc_property: r.gsc_property || ''
+      }));
+      _makeClientsCache = clients;
+      console.log('[Clients] loaded', clients.length, 'from Supabase');
     } catch(e) {
-      console.warn('[Make] falling back to hardcoded list:', e.message);
+      console.warn('[Clients] Supabase failed, using hardcoded fallback:', e.message);
       clients = MAKE_CLIENTS_FALLBACK.map(c => ({ ...c }));
       _makeClientsCache = clients;
     }
