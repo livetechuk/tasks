@@ -4631,29 +4631,17 @@ async function loadMakeClientsIntoDropdown() {
       }
 
       // Make.com v2 correct records endpoint: /data-stores/{id}/data
-      // Uses pg[limit]/pg[offset] (Make's native pagination format) to fetch all records
-      const allRecords = [];
-      let offset = 0;
-      const limit = 1000;
-      while (true) {
-        const res = await fetch(
-          CLAUDE_PROXY.replace(/\/$/, '') +
-          `/make/data-stores/${dataStoreId}/data?teamId=583475&pg%5Blimit%5D=${limit}&pg%5Boffset%5D=${offset}`
-        );
-        if (!res.ok) {
-          const errBody = await res.text();
-          console.error('[Make] API error', res.status, errBody);
-          throw new Error('fetch failed ' + res.status);
-        }
-        const data = await res.json();
-        // Response shape: { records: [{ key, data: {...} }], pg: { limit, offset, ... } }
-        const page = data.records || (Array.isArray(data) ? data : []);
-        allRecords.push(...page);
-        console.log(`[Make] fetched ${page.length} records (total so far: ${allRecords.length})`);
-        if (page.length < limit) break;
-        offset += limit;
-        if (offset > 10000) break;
-      }
+      const recordsUrl = CLAUDE_PROXY.replace(/\/$/, '') +
+        `/make/data-stores/${dataStoreId}/data?teamId=583475`;
+      console.log('[Make] fetching records from:', recordsUrl);
+      const res = await fetch(recordsUrl);
+      console.log('[Make] records response status:', res.status);
+      const rawText = await res.text();
+      console.log('[Make] records raw response (first 500):', rawText.slice(0, 500));
+      if (!res.ok) throw new Error('fetch failed ' + res.status + ': ' + rawText.slice(0, 200));
+      const data = JSON.parse(rawText);
+      const allRecords = data.records || (Array.isArray(data) ? data : []);
+      console.log('[Make] parsed record count:', allRecords.length);
       if (!allRecords.length) throw new Error('empty response');
       // Normalise assignee to capitalised first name so filter comparisons are reliable.
       // Handles: "charlie.wells@livetech.co.uk" → "Charlie", "Megan" → "Megan", "sarah jones" → "Sarah"
