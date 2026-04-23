@@ -289,38 +289,39 @@ async function handleMakeDebug(request, env) {
   const token = env.MAKE_API_TOKEN || '';
   const results = {};
 
-  const authVariants = [
-    ['Authorization: Token', { 'Authorization': `Token ${token}` }],
-    ['X-Imt-Api-Key',        { 'X-Imt-Api-Key': token }],
+  const bases = [
+    'https://eu1.make.com/api/v2',
+    'https://eu2.make.com/api/v2',
+    'https://us1.make.com/api/v2',
+    'https://us2.make.com/api/v2',
+    'https://make.com/api/v2',
   ];
-  const bases = ['https://eu1.make.com/api/v2', 'https://us1.make.com/api/v2', 'https://us2.make.com/api/v2'];
 
-  // Test 1: /users/me — basic auth check (no special scope needed)
-  for (const [label, headers] of authVariants) {
-    for (const base of bases) {
+  // Test each base with three auth methods
+  for (const base of bases) {
+    const variants = [
+      [`Token header`,   `${base}/users/me`,               { 'Authorization': `Token ${token}` }],
+      [`X-Imt-Api-Key`,  `${base}/users/me`,               { 'X-Imt-Api-Key': token }],
+      [`query param`,    `${base}/users/me?api_key=${token}`, {}],
+    ];
+    for (const [label, url, headers] of variants) {
       const key = `${label} @ ${base}`;
       try {
-        const r = await fetch(`${base}/users/me`, { headers });
-        results[key] = { status: r.status, body: (await r.text()).slice(0, 300) };
+        const r = await fetch(url, { headers: { 'Content-Type': 'application/json', ...headers } });
+        const body = (await r.text()).slice(0, 200);
+        results[key] = { status: r.status, body };
+        if (r.status === 200) {
+          // Auth works — now test data store
+          const ds = await fetch(`${base}/data-stores/157873/data-store-records?teamId=583475&limit=2`, { headers: { ...headers } });
+          results[`DATASTORE via ${label} @ ${base}`] = { status: ds.status, body: (await ds.text()).slice(0, 300) };
+        }
       } catch(e) { results[key] = { error: e.message }; }
-    }
-  }
-
-  // Test 2: data store endpoint with whichever auth worked
-  const workingAuth = authVariants.find(([label]) => Object.entries(results).some(([k,v]) => k.startsWith(label) && v.status === 200));
-  if (workingAuth) {
-    const [label, headers] = workingAuth;
-    for (const base of bases) {
-      try {
-        const r = await fetch(`${base}/data-stores/157873/data-store-records?teamId=583475&limit=1`, { headers });
-        results[`datastore @ ${base}`] = { status: r.status, body: (await r.text()).slice(0, 300) };
-      } catch(e) { results[`datastore @ ${base}`] = { error: e.message }; }
     }
   }
 
   return new Response(JSON.stringify({
     tokenLength: token.length,
-    tokenPreview: token ? token.slice(0,4) + '...' + token.slice(-4) : 'MISSING',
+    tokenPreview: token ? token.slice(0,6) + '...' + token.slice(-6) : 'MISSING',
     results
   }, null, 2), { headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
