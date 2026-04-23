@@ -273,29 +273,35 @@ async function handleMakeDebug(request, env) {
 
   const base    = 'https://eu2.make.com/api/v2';
   const headers = { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' };
+  const dsId    = 157873;
+  const teamId  = 583475;
 
-  // List all data stores so we can find the correct ID
+  // List data stores
   try {
-    const r = await fetch(`${base}/data-stores`, { headers });
-    results['list data stores (no teamId)'] = { status: r.status, body: (await r.text()).slice(0, 1000) };
+    const r = await fetch(`${base}/data-stores?teamId=${teamId}`, { headers });
+    results['list data stores'] = { status: r.status, body: (await r.text()).slice(0, 1000) };
   } catch(e) { results['list data stores'] = { error: e.message }; }
 
-  try {
-    const r = await fetch(`${base}/data-stores?teamId=583475`, { headers });
-    results['list data stores teamId=583475'] = { status: r.status, body: (await r.text()).slice(0, 1000) };
-  } catch(e) { results['list data stores teamId=583475'] = { error: e.message }; }
+  // Test every known records endpoint format
+  const recordsEndpoints = [
+    `/data-stores/${dsId}/data-store-records?teamId=${teamId}&pg[limit]=5&pg[offset]=0`,
+    `/data-stores/${dsId}/data-store-records?teamId=${teamId}&limit=5&offset=0`,
+    `/data-stores/${dsId}/data-store-records?teamId=${teamId}`,
+    `/data-store-records?dataStoreId=${dsId}&teamId=${teamId}&pg[limit]=5`,
+    `/data-store-records?dataStoreId=${dsId}&teamId=${teamId}&limit=5`,
+    `/data-store-records?dataStoreId=${dsId}&teamId=${teamId}`,
+    `/data-stores/${dsId}/records?teamId=${teamId}&pg[limit]=5`,
+    `/data-stores/${dsId}/records?teamId=${teamId}&limit=5`,
+    `/data-stores/${dsId}/data?teamId=${teamId}&pg[limit]=5`,
+    `/data-stores/${dsId}/data?teamId=${teamId}&limit=5`,
+  ];
 
-  // Also list teams to find correct teamId
-  try {
-    const r = await fetch(`${base}/teams`, { headers });
-    results['list teams'] = { status: r.status, body: (await r.text()).slice(0, 500) };
-  } catch(e) { results['list teams'] = { error: e.message }; }
-
-  // Also try organizations
-  try {
-    const r = await fetch(`${base}/organizations`, { headers });
-    results['list organizations'] = { status: r.status, body: (await r.text()).slice(0, 500) };
-  } catch(e) { results['list organizations'] = { error: e.message }; }
+  for (const ep of recordsEndpoints) {
+    try {
+      const r = await fetch(`${base}${ep}`, { headers });
+      results[ep] = { status: r.status, body: (await r.text()).slice(0, 400) };
+    } catch(e) { results[ep] = { error: e.message }; }
+  }
 
   return new Response(JSON.stringify({
     tokenLength: token.length,

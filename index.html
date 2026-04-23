@@ -4630,14 +4630,14 @@ async function loadMakeClientsIntoDropdown() {
         dataStoreId = 157873;
       }
 
-      // Make.com v2 records endpoint: root collection, not nested path
+      // Make.com v2 correct records endpoint: /data-stores/{id}/data
       const allRecords = [];
       let offset = 0;
       const limit = 100;
       while (true) {
         const res = await fetch(
           CLAUDE_PROXY.replace(/\/$/, '') +
-          `/make/data-store-records?dataStoreId=${dataStoreId}&teamId=583475&limit=${limit}&offset=${offset}`
+          `/make/data-stores/${dataStoreId}/data?teamId=583475&limit=${limit}&offset=${offset}`
         );
         if (!res.ok) {
           const errBody = await res.text();
@@ -4645,29 +4645,21 @@ async function loadMakeClientsIntoDropdown() {
           throw new Error('fetch failed ' + res.status);
         }
         const data = await res.json();
-        const page = Array.isArray(data.data) ? data.data
-          : data.records || data.data?.records || (Array.isArray(data) ? data : []);
+        // Response shape: { records: [{ key, data: {...} }] }
+        const page = data.records || (Array.isArray(data) ? data : []);
         allRecords.push(...page);
         if (page.length < limit) break;
         offset += limit;
         if (offset > 2000) break;
       }
       if (!allRecords.length) throw new Error('empty response');
-      console.log('[Make] first record:', JSON.stringify(allRecords[0]));
       const SEO_NAMES = ['sarah','charlie','megan','sabrina'];
       const mapped = allRecords.map(r => {
-        const v = r.value || r.data || r;
-        const bq = v.bq_dataset || v.dataset || v.bigquery_dataset || v.bq
+        const v = r.data || r;
+        const name = v['Client Name'] || v.name || v.client_name || v['Name'] || r.key;
+        const assignee = v['Assignee'] || v.assignee || v['Assigned To'] || v.assigned_to || '';
+        const bq = v.bq_dataset || v.dataset || v.bigquery_dataset
           || Object.values(v).find(val => typeof val === 'string' && val.startsWith('searchconsole_')) || '';
-        const name = v.name || v.client_name || v['Client Name'] || v['Name'] || v.title || v.label
-          || Object.values(v).find(val => typeof val === 'string' && val !== bq && !val.startsWith('http') && val.length > 1 && val.length < 60)
-          || r.key || bq;
-        let assignee = v.assignee || v.Assignee || v.assigned_to || v.assigned || v.owner
-          || v.user || v.team_member || v['Assigned To'] || v['Account Manager'] || v.responsible || '';
-        if (!assignee) {
-          const allVals = Object.values(v).filter(val => typeof val === 'string');
-          assignee = allVals.find(val => SEO_NAMES.some(n => val.toLowerCase().includes(n))) || '';
-        }
         return { id: bq || r.key, name, bq_dataset: bq, assignee, drive_folder_id: v.drive_folder_id || '' };
       }).filter(c => c.id);
       if (!mapped.length) throw new Error('no valid records after mapping');
