@@ -2765,8 +2765,8 @@ function renderTimesheetsView(){
       return `<div class="mt-section-title">Client Time</div><div class="ts-empty" style="padding:1rem 0">Loading...</div>`;
     }
     const mtClients = (_makeClientsCache||MAKE_CLIENTS_FALLBACK).filter(c => {
-      if (currentUser===SEO_MARKETING_HEAD||currentUser==='Holly') return true;
-      return (c.assignee||'').toLowerCase().split('@')[0]===mtUser.toLowerCase();
+      if ((currentUser===SEO_MARKETING_HEAD||currentUser==='Holly') && !isTeamView()) return true;
+      return c.assignee && c.assignee.toLowerCase().split('@')[0]===mtUser.toLowerCase();
     });
     const todayStr=isoToday();
     const td=new Date(todayStr+'T00:00:00');
