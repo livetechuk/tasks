@@ -2766,7 +2766,7 @@ function renderTimesheetsView(){
     }
     const mtClients = (_makeClientsCache||MAKE_CLIENTS_FALLBACK).filter(c => {
       if ((currentUser===SEO_MARKETING_HEAD||currentUser==='Holly') && !isTeamView()) return true;
-      return c.assignee && c.assignee.toLowerCase().split('@')[0]===mtUser.toLowerCase();
+      return c.assignee && c.assignee.toLowerCase()===mtUser.toLowerCase();
     });
     const todayStr=isoToday();
     const td=new Date(todayStr+'T00:00:00');
@@ -4655,11 +4655,19 @@ async function loadMakeClientsIntoDropdown() {
         if (offset > 10000) break;
       }
       if (!allRecords.length) throw new Error('empty response');
-      const SEO_NAMES = ['sarah','charlie','megan','sabrina'];
+      // Normalise assignee to capitalised first name so filter comparisons are reliable.
+      // Handles: "charlie.wells@livetech.co.uk" → "Charlie", "Megan" → "Megan", "sarah jones" → "Sarah"
+      const normaliseAssignee = (raw) => {
+        if (!raw) return '';
+        const local = raw.toLowerCase().split('@')[0];   // strip domain
+        const first = local.split(/[._\s]/)[0];          // first word before dot/underscore/space
+        return first.charAt(0).toUpperCase() + first.slice(1);
+      };
       const mapped = allRecords.map(r => {
         const v = r.data || r;
         const name = v['Client Name'] || v.name || v.client_name || v['Name'] || r.key;
-        const assignee = v['Assignee'] || v.assignee || v['Assigned To'] || v.assigned_to || '';
+        const rawAssignee = v['Assignee'] || v.assignee || v['Assigned To'] || v.assigned_to || '';
+        const assignee = normaliseAssignee(rawAssignee);
         const bq = v.bq_dataset || v.dataset || v.bigquery_dataset
           || Object.values(v).find(val => typeof val === 'string' && val.startsWith('searchconsole_')) || '';
         return { id: bq || r.key, name, bq_dataset: bq, assignee, drive_folder_id: v.drive_folder_id || '' };
@@ -4667,7 +4675,7 @@ async function loadMakeClientsIntoDropdown() {
       if (!mapped.length) throw new Error('no valid records after mapping');
       clients = mapped;
       _makeClientsCache = clients;
-      console.log('[Make] loaded', clients.length, 'clients from data store', dataStoreId);
+      console.log('[Make] loaded', clients.length, 'clients:', mapped.map(c => `${c.name}(${c.assignee})`).join(', '));
     } catch(e) {
       console.warn('[Make] falling back to hardcoded list:', e.message);
       clients = MAKE_CLIENTS_FALLBACK.map(c => ({ ...c }));
@@ -4718,7 +4726,7 @@ async function loadMakeClientsIntoDropdown() {
     const isAdmin = (currentUser === SEO_MARKETING_HEAD || currentUser === 'Holly') && !isTeamView();
     const filtered = isAdmin
       ? clients
-      : clients.filter(c => c.assignee && c.assignee.toLowerCase().split('@')[0] === mnViewingUser.toLowerCase());
+      : clients.filter(c => c.assignee && c.assignee.toLowerCase() === mnViewingUser.toLowerCase());
     if (filtered.length) {
       if (isAdmin) {
         mnList.innerHTML = buildGroupedSidebar(filtered, 'mnSelectClient');
