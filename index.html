@@ -1055,7 +1055,8 @@ function renderList(loading){
   const done=allItems.filter(i=>i.done);
   const pct=items.length?Math.round(done.length/items.length*100):0;
   const isTaskView=['list','kanban','calendar'].includes(currentView);
-  const isTimesheetsActive=['timesheets','workload'].includes(currentView);
+  const isTasksGroupActive = isTaskView || currentView === 'workload';
+  const isTimesheetsActive = currentView === 'timesheets';
   const isSideView=['projects','marketing-review','meeting-notes','admin-panel','timesheets','workload'].includes(currentView);
   const tv=currentView;
 
@@ -1080,16 +1081,16 @@ function renderList(loading){
         </div>
         <nav class="sidebar-nav">
           <div class="sidebar-section-label">Navigation</div>
-          <button class="sidebar-item${isTaskView?' active':''}" onclick="setView('list')">${icoTasks} Tasks</button>
-          ${isTaskView?`
+          <button class="sidebar-item${isTasksGroupActive?' active':''}" onclick="setView('list')">${icoTasks} Tasks</button>
+          ${isTasksGroupActive?`
             <button class="sidebar-subitem${tv==='list'?' active':''}" onclick="setView('list')">List</button>
             <button class="sidebar-subitem${tv==='kanban'?' active':''}" onclick="setView('kanban')">Kanban</button>
             <button class="sidebar-subitem${tv==='calendar'?' active':''}" onclick="setView('calendar')">Calendar</button>
+            <button class="sidebar-subitem${tv==='workload'?' active':''}" onclick="setView('workload')">Schedule</button>
           `:''}
           <button class="sidebar-item${isTimesheetsActive?' active':''}" onclick="setView('timesheets')">${icoTime} Timesheets</button>
           ${isTimesheetsActive?`
             <button class="sidebar-subitem${tv==='timesheets'?' active':''}" onclick="setView('timesheets')">My Time</button>
-            <button class="sidebar-subitem${tv==='workload'?' active':''}" onclick="setView('workload')">Schedule</button>
           `:''}
           ${CLICKUP_USERS.includes(currentUser)?`<button class="sidebar-item${tv==='projects'?' active':''}" onclick="setView('projects')">${icoProj} Projects</button>`:''}
           ${(currentUser===SEO_MARKETING_HEAD||currentUser==='Holly')?`<button class="sidebar-item${tv==='marketing-review'?' active':''}" onclick="setView('marketing-review')">${icoMR} Marketing Review</button>`:''}
@@ -2489,7 +2490,8 @@ async function addTimeSession(item,session){
       showError("Save returned no rows. Check Supabase UPDATE policy for the tasks table.");
       return;
     }
-    items=items.map(i=>i.id===item.id?saved[0]:i);
+    if(isTeamView()){teamViewItems=teamViewItems.map(i=>i.id===item.id?saved[0]:i);}
+    else{items=items.map(i=>i.id===item.id?saved[0]:i);}
     renderList();
   }catch(e){
     showError("Could not save tracked time: "+e.message);
@@ -2743,9 +2745,9 @@ function renderTimesheetsView(){
   return `<div class="ts-wrap">
     <div class="ts-toolbar">
       ${["today","week","month","all"].map(f=>`<button class="ts-filter-btn${tsFilter===f?" active":""}" onclick="setTsFilter('${f}')">${{today:"Today",week:"This week",month:"This month",all:"All time"}[f]}</button>`).join("")}
-      ${!isTeamView()?`<button class="ts-add-manual-btn" onclick="openManual()">➕ Log time</button>`:""}
+      ${(!isTeamView()||currentUser==='Holly'||currentUser===SEO_MARKETING_HEAD)?`<button class="ts-add-manual-btn" onclick="openManual()">➕ Log time</button>`:""}
     </div>
-    ${filtered.length===0?`<div class="ts-empty">No time logged for ${filterLabel[tsFilter].toLowerCase()}.<br><br>${!isTeamView()?`<button class="ts-add-manual-btn" onclick="openManual()">Log time manually</button>`:""}</div>`:`
+    ${filtered.length===0?`<div class="ts-empty">No time logged for ${filterLabel[tsFilter].toLowerCase()}.<br><br>${(!isTeamView()||currentUser==='Holly'||currentUser===SEO_MARKETING_HEAD)?`<button class="ts-add-manual-btn" onclick="openManual()">Log time manually</button>`:""}</div>`:`
     ${dayBlocks}
     <div class="ts-summary">
       <div class="ts-summary-title">Summary — ${filterLabel[tsFilter]}</div>
@@ -2783,7 +2785,8 @@ function renderTimesheetsView(){
     const mtByClient={};
     mtFiltered.forEach(e=>{if(!mtByClient[e.client_id])mtByClient[e.client_id]={name:e.client_name,h:0};mtByClient[e.client_id].h=Math.round((mtByClient[e.client_id].h+e.hours)*100)/100;});
     const mtTotal=Math.round(mtFiltered.reduce((a,e)=>a+e.hours,0)*100)/100;
-    const logForm = !isTeamView()?`
+    const canEditMT = !isTeamView() || currentUser === 'Holly' || currentUser === SEO_MARKETING_HEAD;
+    const logForm = canEditMT?`
       <div class="mt-log-form">
         <div class="mt-form-row">
           <select id="mt-client-sel" class="mt-select"><option value="">Select client...</option>${mtClients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
@@ -2798,7 +2801,7 @@ function renderTimesheetsView(){
       const dayH=Math.round(entries.reduce((a,e)=>a+e.hours,0)*100)/100;
       const d2=new Date(date+'T00:00:00');const diff=Math.round((td-d2)/86400000);
       const lbl=diff===0?'Today':diff===1?'Yesterday':d2.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'});
-      return `<div class="ts-day-block"><div class="ts-day-header"><span class="ts-day-name${diff===0?' today-name':''}">${lbl}</span><span class="ts-day-total">${fmtHours(dayH)}</span></div><div class="ts-entries">${entries.map(e=>`<div class="ts-entry"><div class="ts-entry-dot" style="background:var(--coral)"></div><div class="ts-entry-task" style="cursor:default">${esc(e.client_name)}</div>${e.note?`<span class="ts-entry-note">${esc(e.note)}</span>`:''}<span class="ts-entry-time">${fmtHours(e.hours)}</span>${!isTeamView()?`<button class="ts-entry-del" onclick="deleteMarketingTime('${e.id}')">&times;</button>`:''}</div>`).join('')}</div></div>`;
+      return `<div class="ts-day-block"><div class="ts-day-header"><span class="ts-day-name${diff===0?' today-name':''}">${lbl}</span><span class="ts-day-total">${fmtHours(dayH)}</span></div><div class="ts-entries">${entries.map(e=>`<div class="ts-entry"><div class="ts-entry-dot" style="background:var(--coral)"></div><div class="ts-entry-task" style="cursor:default">${esc(e.client_name)}</div>${e.note?`<span class="ts-entry-note">${esc(e.note)}</span>`:''}<span class="ts-entry-time">${fmtHours(e.hours)}</span>${canEditMT?`<button class="ts-entry-del" onclick="deleteMarketingTime('${e.id}')">&times;</button>`:''}</div>`).join('')}</div></div>`;
     }).join('');
     const mtSummary=mtFiltered.length?`<div class="ts-summary" style="margin-top:12px"><div class="ts-summary-title">Client Summary — ${filterLabel[tsFilter]}</div>${Object.values(mtByClient).sort((a,b)=>b.h-a.h).map(c=>`<div class="ts-summary-row"><div class="ts-entry-dot" style="background:var(--coral);flex-shrink:0;width:8px;height:8px;border-radius:50%"></div><span class="ts-summary-task" style="margin-left:8px">${esc(c.name)}</span><span class="ts-summary-h">${fmtHours(c.h)}</span></div>`).join('')}<div class="ts-total-row"><span class="ts-total-label">Total client time</span><span class="ts-total-val">${fmtHours(mtTotal)||'0h'}</span></div></div>`:'' ;
     return `<div class="mt-section-title">Client Time</div>${logForm}${mtBlocks||`<div class="ts-empty" style="padding:1.5rem 0">No client time logged for ${filterLabel[tsFilter].toLowerCase()}.</div>`}${mtSummary}`;
@@ -2831,7 +2834,7 @@ async function deleteSession(itemId,date,entryIdx){
 
 // ── Manual time entry ─────────────────────────────────────
 function openManual(prefillItemId){
-  const allActive=items.filter(i=>!i.done);
+  const allActive=(isTeamView()?teamViewItems:items).filter(i=>!i.done);
   const sel=document.getElementById("manual-task-sel");
   if(!sel) return;
   sel.innerHTML=allActive.map(i=>`<option value="${i.id}"${i.id===prefillItemId?" selected":""}>${esc(i.text)}</option>`).join("");
@@ -2852,7 +2855,7 @@ async function saveManualEntry(){
   const hoursRaw=parseFloat(document.getElementById("manual-hours").value);
   const note=document.getElementById("manual-note").value.trim();
   if(!itemId||!date||!hoursRaw||hoursRaw<=0){showError("Please fill in task, date and hours.");return;}
-  const itemSnap={...items.find(i=>i.id===itemId)};
+  const itemSnap={...(isTeamView()?teamViewItems:items).find(i=>i.id===itemId)};
   if(!itemSnap.id){showError("Task not found.");return;}
   closeManual();
   currentView="timesheets"; // switch view before renderList so it shows correctly after save
