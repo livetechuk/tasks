@@ -3770,7 +3770,7 @@ function mrMapCoverageState(state) {
     'server error (5xx)': 'Server error (5xx)',
     'blocked due to other 4xx issue': 'Blocked due to other 4xx issue',
   };
-  return map[s] || state; // fall back to raw string if not mapped
+  return map[s] || null; // null = indexed/unknown, don't create a finding
 }
 
 function mrSaveGscProperty() {
@@ -3811,20 +3811,15 @@ function mrAddFinding(name, gscCount, savedUrls) {
   // Hide this option in the dropdown
   const sel = document.getElementById('mr-finding-select');
   if (sel) Array.from(sel.options).forEach(o => { if (o.value === name) o.style.display = 'none'; });
-  // Restore saved URLs
+  // Restore saved URLs — render directly (not from BigQuery list)
   if (savedUrls?.length) {
     const body = div.querySelector('.mr-finding-body');
     const caret = div.querySelector('.mr-finding-caret');
     body.style.display = 'block';
     caret.textContent = '▾';
     const urlList = div.querySelector('.mr-url-list');
-    mrEnsureUrls(urlList, name, () => {
-      savedUrls.forEach(u => {
-        const uc = urlList.querySelector(`input[data-url="${CSS.escape(u)}"]`);
-        if (uc) uc.checked = true;
-      });
-      mrUpdateFindingCount(div);
-    });
+    mrRenderSavedUrls(urlList, savedUrls);
+    mrUpdateFindingCount(div);
   }
   return div;
 }
@@ -3860,6 +3855,17 @@ function mrSwitchTab(tab) {
   document.getElementById('mr-tab-btn-performance').style.cssText = tab === 'performance'
     ? 'padding:8px 18px;font-size:13px;font-weight:600;font-family:inherit;border:none;background:var(--navy);color:#fff;cursor:pointer'
     : 'padding:8px 18px;font-size:13px;font-weight:500;font-family:inherit;border:none;background:none;color:#888;cursor:pointer';
+}
+
+// Render a fixed list of specific URLs (from GSC inspection), all pre-checked
+function mrRenderSavedUrls(urlList, urls) {
+  urlList.innerHTML = urls.map(u =>
+    `<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;cursor:pointer;border-bottom:0.5px solid #f5f5f3">
+      <input type="checkbox" data-url="${u}" checked onchange="mrUpdateFindingCount(this.closest('.mr-finding-row'))" style="margin-top:2px;flex-shrink:0;accent-color:var(--navy)">
+      <span style="font-family:monospace;font-size:11px;word-break:break-all;color:#0066cc;flex:1">${u}</span>
+    </label>`
+  ).join('');
+  urlList.dataset.loaded = '1';
 }
 
 function mrUpdateFindingCount(row) {
