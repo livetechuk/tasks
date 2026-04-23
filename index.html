@@ -3835,7 +3835,7 @@ async function mrRefresh() {
   const sql = 'SELECT url, SUM(clicks) as clicks, SUM(impressions) as impressions, ROUND(AVG(sum_position),1) as avg_position ' +
     `FROM \`livetech-website.${bqDataset}.searchdata_url_impression\` ` +
     `WHERE data_date >= '${fromDate}' AND data_date <= '${toDate}' AND search_type = 'WEB' ` +
-    'GROUP BY url ORDER BY impressions DESC LIMIT 50';
+    'GROUP BY url ORDER BY impressions DESC LIMIT 100';
   try {
     const res = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/bigquery', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
