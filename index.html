@@ -4631,17 +4631,27 @@ async function loadMakeClientsIntoDropdown() {
       }
 
       // Make.com v2 correct records endpoint: /data-stores/{id}/data
-      const recordsUrl = CLAUDE_PROXY.replace(/\/$/, '') +
-        `/make/data-stores/${dataStoreId}/data?teamId=583475`;
-      console.log('[Make] fetching records from:', recordsUrl);
-      const res = await fetch(recordsUrl);
-      console.log('[Make] records response status:', res.status);
-      const rawText = await res.text();
-      console.log('[Make] records raw response (first 500):', rawText.slice(0, 500));
-      if (!res.ok) throw new Error('fetch failed ' + res.status + ': ' + rawText.slice(0, 200));
-      const data = JSON.parse(rawText);
-      const allRecords = data.records || (Array.isArray(data) ? data : []);
-      console.log('[Make] parsed record count:', allRecords.length);
+      // Default page size is 10; paginate with limit + offset until all records loaded
+      const allRecords = [];
+      const limit = 500;
+      let offset = 0;
+      while (true) {
+        const res = await fetch(
+          CLAUDE_PROXY.replace(/\/$/, '') +
+          `/make/data-stores/${dataStoreId}/data?teamId=583475&limit=${limit}&offset=${offset}`
+        );
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error('fetch failed ' + res.status + ': ' + errText.slice(0, 200));
+        }
+        const data = await res.json();
+        const page = data.records || (Array.isArray(data) ? data : []);
+        allRecords.push(...page);
+        if (page.length < limit) break;
+        offset += limit;
+        if (offset > 5000) break;
+      }
+      console.log('[Make] total records loaded:', allRecords.length);
       if (!allRecords.length) throw new Error('empty response');
       // Normalise assignee to capitalised first name so filter comparisons are reliable.
       // Handles: "charlie.wells@livetech.co.uk" → "Charlie", "Megan" → "Megan", "sarah jones" → "Sarah"
