@@ -599,6 +599,11 @@
   .mn-upload-area:hover { border-color: var(--coral); }
   .mn-upload-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .mn-upload-link { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #eff6ff; border-radius: 6px; font-size: 12px; color: #1e40af; text-decoration: none; }
+  .mn-group { margin-bottom: 4px; }
+  .mn-group-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 6px 10px; background: none; border: none; border-radius: 7px; font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; font-family: inherit; }
+  .mn-group-toggle:hover { background: #f5f5f3; color: #444; }
+  .mn-group-caret { font-size: 10px; }
+  .mn-group-clients { padding-left: 4px; }
   @media (max-width: 700px) { .mn-layout { flex-direction: column; } .mn-sidebar { width: auto; position: static; max-height: none; } }
 </style>
 <!-- Microsoft Authentication Library -->
@@ -4029,30 +4034,73 @@ async function loadMakeClientsIntoDropdown() {
     }
   }
 
-  // Marketing Review sidebar (Sarah sees all clients)
+  // Marketing Review sidebar — grouped by assignee (Sarah sees all, grouped)
   const mrList = document.getElementById('mr-client-list');
   if (mrList) {
-    mrList.innerHTML = clients.map(c =>
-      `<button class="mn-client-btn mr-client-btn" data-id="${c.id}" onclick="mrSelectClient(${JSON.stringify(c.id)},${JSON.stringify(c.name)})">${c.name}</button>`
-    ).join('');
+    const grouped = {};
+    clients.forEach(c => {
+      const key = c.assignee || 'Unassigned';
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(c);
+    });
+    const assigneeOrder = ['Sarah','Charlie','Megan','Sabrina','Unassigned'];
+    const sortedKeys = Object.keys(grouped).sort((a,b) => {
+      const ai = assigneeOrder.indexOf(a); const bi = assigneeOrder.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    mrList.innerHTML = sortedKeys.map(assignee => `
+      <div class="mn-group">
+        <button class="mn-group-toggle" onclick="toggleSidebarGroup(this)">${assignee} <span class="mn-group-caret">▾</span></button>
+        <div class="mn-group-clients">
+          ${grouped[assignee].map(c =>
+            `<button class="mn-client-btn mr-client-btn" data-id="${c.id}" onclick='mrSelectClient(${JSON.stringify(c.id)},${JSON.stringify(c.name)})'>${c.name}</button>`
+          ).join('')}
+        </div>
+      </div>`).join('');
     if (_mrCurrentClientId) document.querySelector(`#mr-client-list .mr-client-btn[data-id="${_mrCurrentClientId}"]`)?.classList.add('active');
   }
 
-  // Meeting Notes sidebar (filtered by assignee for non-Sarah)
+  // Meeting Notes sidebar (filtered by assignee for non-Sarah; Sarah sees all grouped)
   const mnList = document.getElementById('mn-client-list');
   if (mnList) {
     const filtered = currentUser === SEO_MARKETING_HEAD
       ? clients
       : clients.filter(c => !c.assignee || c.assignee === currentUser);
     if (filtered.length) {
-      mnList.innerHTML = filtered.map(c =>
-        `<button class="mn-client-btn" data-id="${c.id}" onclick="mnSelectClient(${JSON.stringify(c.id)},${JSON.stringify(c.name)})">${c.name}</button>`
-      ).join('');
+      if (currentUser === SEO_MARKETING_HEAD) {
+        // Sarah: grouped by assignee
+        const grouped = {};
+        filtered.forEach(c => { const k = c.assignee || 'Unassigned'; if (!grouped[k]) grouped[k] = []; grouped[k].push(c); });
+        const order = ['Sarah','Charlie','Megan','Sabrina','Unassigned'];
+        const keys = Object.keys(grouped).sort((a,b) => { const ai=order.indexOf(a),bi=order.indexOf(b); return (ai===-1?99:ai)-(bi===-1?99:bi); });
+        mnList.innerHTML = keys.map(assignee => `
+          <div class="mn-group">
+            <button class="mn-group-toggle" onclick="toggleSidebarGroup(this)">${assignee} <span class="mn-group-caret">▾</span></button>
+            <div class="mn-group-clients">
+              ${grouped[assignee].map(c =>
+                `<button class="mn-client-btn" data-id="${c.id}" onclick='mnSelectClient(${JSON.stringify(c.id)},${JSON.stringify(c.name)})'>${c.name}</button>`
+              ).join('')}
+            </div>
+          </div>`).join('');
+      } else {
+        // Other team members: flat list of their own clients
+        mnList.innerHTML = filtered.map(c =>
+          `<button class="mn-client-btn" data-id="${c.id}" onclick='mnSelectClient(${JSON.stringify(c.id)},${JSON.stringify(c.name)})'>${c.name}</button>`
+        ).join('');
+      }
       if (_mnCurrentClientId) document.querySelector(`#mn-client-list .mn-client-btn[data-id="${_mnCurrentClientId}"]`)?.classList.add('active');
     } else {
       mnList.innerHTML = '<span style="font-size:13px;color:#aaa">No clients assigned</span>';
     }
   }
+}
+
+function toggleSidebarGroup(btn) {
+  const clients = btn.nextElementSibling;
+  const caret = btn.querySelector('.mn-group-caret');
+  const isOpen = clients.style.display !== 'none';
+  clients.style.display = isOpen ? 'none' : 'block';
+  if (caret) caret.textContent = isOpen ? '▸' : '▾';
 }
 
 </script>
