@@ -4631,13 +4631,14 @@ async function loadMakeClientsIntoDropdown() {
       }
 
       // Make.com v2 correct records endpoint: /data-stores/{id}/data
+      // Uses pg[limit]/pg[offset] (Make's native pagination format) to fetch all records
       const allRecords = [];
       let offset = 0;
-      const limit = 100;
+      const limit = 1000;
       while (true) {
         const res = await fetch(
           CLAUDE_PROXY.replace(/\/$/, '') +
-          `/make/data-stores/${dataStoreId}/data?teamId=583475&limit=${limit}&offset=${offset}`
+          `/make/data-stores/${dataStoreId}/data?teamId=583475&pg%5Blimit%5D=${limit}&pg%5Boffset%5D=${offset}`
         );
         if (!res.ok) {
           const errBody = await res.text();
@@ -4645,12 +4646,13 @@ async function loadMakeClientsIntoDropdown() {
           throw new Error('fetch failed ' + res.status);
         }
         const data = await res.json();
-        // Response shape: { records: [{ key, data: {...} }] }
+        // Response shape: { records: [{ key, data: {...} }], pg: { limit, offset, ... } }
         const page = data.records || (Array.isArray(data) ? data : []);
         allRecords.push(...page);
+        console.log(`[Make] fetched ${page.length} records (total so far: ${allRecords.length})`);
         if (page.length < limit) break;
         offset += limit;
-        if (offset > 2000) break;
+        if (offset > 10000) break;
       }
       if (!allRecords.length) throw new Error('empty response');
       const SEO_NAMES = ['sarah','charlie','megan','sabrina'];
