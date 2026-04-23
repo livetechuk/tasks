@@ -1,11 +1,13 @@
 /**
  * Cloudflare Worker: livetech-claude-proxy
  *
- * Required secrets (set in Cloudflare dashboard → Settings → Variables):
- *   ANTHROPIC_KEY      — Anthropic API key
- *   CLICKUP_KEY        — ClickUp personal API token
- *   MAKE_KEY           — Make.com API token
- *   GOOGLE_SA_JSON     — Full Google service account JSON (stringify the .json key file)
+ * Required secrets (match what's already in your Cloudflare Worker):
+ *   ANTHROPIC_KEY                — Anthropic API key
+ *   CLICKUP_KEY                  — ClickUp personal API token
+ *   MAKE_API_TOKEN               — Make.com API token
+ *   GOOGLE_SERVICE_ACCOUNT_EMAIL — Google service account email
+ *   GOOGLE_PRIVATE_KEY           — Google service account private key (RSA PEM)
+ *   (optional) GOOGLE_SA_JSON    — Full service account JSON (overrides the two above)
  *
  * Routes:
  *   POST /              → Claude Anthropic API proxy
@@ -55,16 +57,18 @@ async function getGoogleToken(env, scopes) {
   let email, rawKey;
 
   if (env.GOOGLE_SA_JSON) {
+    // Full JSON key file stored as one secret (optional, newer setup)
     const sa = JSON.parse(env.GOOGLE_SA_JSON);
     email  = sa.client_email;
     rawKey = sa.private_key;
   } else {
-    email  = env.SA_EMAIL;
-    rawKey = env.SA_PRIVATE_KEY;
+    // Existing secrets: GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY
+    email  = env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    rawKey = env.GOOGLE_PRIVATE_KEY;
   }
 
   if (!email || !rawKey) {
-    throw new Error('Google service account not configured. Set GOOGLE_SA_JSON (or SA_EMAIL + SA_PRIVATE_KEY) in Worker secrets.');
+    throw new Error('Google service account not configured. Expected GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY secrets.');
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -252,7 +256,7 @@ async function handleMake(request, env, url, path) {
   const makeUrl  = `https://eu1.make.com/api/v2/${makePath}${url.search}`;
   const res      = await fetch(makeUrl, {
     method:  request.method,
-    headers: { 'Authorization': `Token ${env.MAKE_KEY}`, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Token ${env.MAKE_API_TOKEN}`, 'Content-Type': 'application/json' },
     body:    ['GET','HEAD'].includes(request.method) ? undefined : await request.text(),
   });
   return new Response(await res.text(), {
