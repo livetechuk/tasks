@@ -3527,6 +3527,9 @@ function renderMarketingReview() {
             <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
               <span id="mr-client-heading" style="font-size:16px;font-weight:600;color:var(--navy)"></span>
               <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap">
+                <label style="font-size:12px;color:#888;font-weight:600">GSC Property</label>
+                <input type="text" id="mr-gsc-property" placeholder="https://example.com/" oninput="mrSaveGscProperty()"
+                  style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:210px;color:#555">
                 <label style="font-size:12px;color:#888;font-weight:600">Month</label>
                 <select id="mr-month" onchange="mrLoadData()" class="seo-select">${getSeoMonthOptions()}</select>
                 <button class="seo-btn" onclick="mrRefresh()" id="mr-refresh-btn" style="white-space:nowrap">Refresh SC Data</button>
@@ -3585,6 +3588,7 @@ function mrSelectClient(id, name) {
   if (document.getElementById('mr-no-client')) document.getElementById('mr-no-client').style.display = 'none';
   if (document.getElementById('mr-content')) document.getElementById('mr-content').style.display = 'block';
   if (document.getElementById('mr-client-heading')) document.getElementById('mr-client-heading').textContent = name;
+  mrLoadGscProperty();
   mrLoadData();
 }
 
@@ -3668,7 +3672,42 @@ async function mrRefresh() {
     });
     const upsert = await supabaseWrite('sc_data', records, 'return=minimal');
     if (!upsert.ok) throw new Error(`Supabase insert ${upsert.status}`);
-    showSeoMsg('mr-msg', `Synced ${records.length} URLs.`, 'success');
+    // Auto-generate findings via GSC URL Inspection API
+    const gscProperty = document.getElementById('mr-gsc-property')?.value?.trim();
+    if (gscProperty) {
+      if (btn) btn.textContent = 'Inspecting URLs...';
+      try {
+        const inspectRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/gsc-inspect', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ siteUrl: gscProperty, urls: rows.map(r => r.url) })
+        });
+        if (inspectRes.ok) {
+          const inspected = await inspectRes.json();
+          const findingGroups = {};
+          inspected.forEach(item => {
+            if (item.error || !item.coverageState) return;
+            const finding = mrMapCoverageState(item.coverageState);
+            if (!finding) return; // indexed, skip
+            if (!findingGroups[finding]) findingGroups[finding] = [];
+            findingGroups[finding].push(item.url);
+          });
+          const autoFindings = Object.entries(findingGroups).map(([name, urls]) => ({ name, count: null, urls }));
+          if (autoFindings.length) {
+            await saveScSelections(month, clientId, autoFindings);
+            showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) across ${inspected.filter(i=>!i.error).length} URLs.`, 'success');
+          } else {
+            showSeoMsg('mr-msg', `Synced ${records.length} URLs. No coverage issues detected.`, 'success');
+          }
+        } else {
+          showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspection failed — check service account access.`, 'info');
+        }
+      } catch(e) {
+        console.warn('GSC inspect error:', e);
+        showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspection error: ${e.message}`, 'info');
+      }
+    } else {
+      showSeoMsg('mr-msg', `Synced ${records.length} URLs. Add a GSC Property URL above to auto-generate findings.`, 'info');
+    }
     await mrLoadData();
   } catch(e) {
     console.error('mrRefresh error:', e);
@@ -3712,6 +3751,41 @@ function mrEnsureUrls(urlList, findingName, callback) {
   ).join('');
   urlList.dataset.loaded = '1';
   if (callback) callback();
+}
+
+function mrMapCoverageState(state) {
+  if (!state) return null;
+  const s = state.toLowerCase().replace(/['']/g, "'").trim();
+  // Return null for indexed pages (no finding needed)
+  if (s === 'submitted and indexed' || s === 'indexed, not submitted in sitemap' || s === 'indexed') return null;
+  // Map to our SC_FINDINGS names
+  const map = {
+    'crawled - currently not indexed': 'Crawled – currently not indexed',
+    'discovered - currently not indexed': 'Discovered – currently not indexed',
+    'page with redirect': 'Page with redirect',
+    'not found (404)': 'Not found (404)',
+    'soft 404': 'Soft 404',
+    'blocked by robots.txt': 'Blocked by robots.txt',
+    'duplicate without user-selected canonical': 'Duplicate without user-selected canonical',
+    'alternative page with proper canonical tag': 'Alternative page with proper canonical tag',
+    "excluded by 'noindex' tag": 'Excluded by noindex tag',
+    'excluded by noindex tag': 'Excluded by noindex tag',
+    'blocked due to access forbidden (403)': 'Blocked due to access forbidden (403)',
+    'server error (5xx)': 'Server error (5xx)',
+    'blocked due to other 4xx issue': 'Blocked due to other 4xx issue',
+  };
+  return map[s] || state; // fall back to raw string if not mapped
+}
+
+function mrSaveGscProperty() {
+  const val = document.getElementById('mr-gsc-property')?.value || '';
+  if (_mrCurrentClientId) localStorage.setItem(`mr_gsc_${_mrCurrentClientId}`, val);
+}
+
+function mrLoadGscProperty() {
+  const val = _mrCurrentClientId ? (localStorage.getItem(`mr_gsc_${_mrCurrentClientId}`) || '') : '';
+  const el = document.getElementById('mr-gsc-property');
+  if (el) el.value = val;
 }
 
 function mrAddFinding(name, gscCount, savedUrls) {
