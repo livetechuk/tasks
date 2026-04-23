@@ -3400,12 +3400,16 @@ async function loadScData(clientId, month) {
   } catch(e) { console.error('loadScData error:', e); return []; }
 }
 
-// Route Supabase writes through the proxy (service role key bypasses RLS)
 async function supabaseWrite(table, data, prefer = 'resolution=merge-duplicates') {
-  return fetch(`${CLAUDE_PROXY}/supabase-write`, {
+  return fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ table, data, prefer })
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': prefer
+    },
+    body: JSON.stringify(data)
   });
 }
 
