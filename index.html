@@ -3498,11 +3498,11 @@ function renderMarketingReview() {
               <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap">
                 <label style="font-size:12px;color:#888;font-weight:600">Month</label>
                 <select id="mr-month" onchange="mrLoadData()" class="seo-select">${getSeoMonthOptions()}</select>
-                <button class="seo-btn" onclick="mrRefresh()" id="mr-refresh-btn" style="white-space:nowrap">&#x1F504; Refresh SC Data</button>
+                <button class="seo-btn" onclick="mrRefresh()" id="mr-refresh-btn" style="white-space:nowrap">Refresh SC Data</button>
               </div>
             </div>
           </div>
-          <div id="mr-loading" style="display:none;text-align:center;padding:20px;color:#888">&#x23F3; Loading...</div>
+          <div id="mr-loading" style="display:none;text-align:center;padding:20px;color:#888">Loading...</div>
           <div id="mr-dashboard" style="display:none">
             <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden">
               <table style="width:100%;border-collapse:collapse">
@@ -3519,7 +3519,7 @@ function renderMarketingReview() {
               </table>
             </div>
             <div style="display:flex;gap:10px;margin-top:12px;align-items:center">
-              <button class="seo-btn" style="background:var(--navy)" onclick="mrSave()">&#x1F4BE; Save Selections</button>
+              <button class="seo-btn" style="background:var(--navy)" onclick="mrSave()">Save Selections</button>
               <div id="mr-msg" style="display:none;padding:8px 12px;border-radius:8px;font-size:13px;flex:1"></div>
             </div>
           </div>
@@ -3603,7 +3603,7 @@ async function mrRefresh() {
     console.error('mrRefresh error:', e);
     showSeoMsg('mr-msg', `Error: ${e.message}`, 'error');
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '&#x1F504; Refresh SC Data'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Refresh SC Data'; }
   }
 }
 
@@ -3722,8 +3722,8 @@ function renderMeetingNotes() {
             </div>
 
             <div style="display:flex;gap:10px;margin-top:4px">
-              <button class="seo-btn" style="background:#6b7280" onclick="mnExportPDF()">&#x1F4C4; Export PDF</button>
-              <button class="seo-btn" onclick="mnSave()">&#x1F4BE; Save</button>
+              <button class="seo-btn" style="background:#6b7280" onclick="mnExportPDF()">Export PDF</button>
+              <button class="seo-btn" onclick="mnSave()">Save</button>
             </div>
           </div>
         </div>
@@ -3894,8 +3894,8 @@ function mnRenderFileList(containerId, urlsJson) {
   el.dataset.urls = JSON.stringify(items);
   el.innerHTML = items.map(item =>
     item.url
-      ? `<a href="${item.url}" target="_blank" class="mn-upload-link">&#x1F5BC; ${item.name}</a>`
-      : `<span class="mn-upload-link" style="background:#fff3cd;color:#856404">&#x23F3; ${item.name}</span>`
+      ? `<a href="${item.url}" target="_blank" class="mn-upload-link">${item.name}</a>`
+      : `<span class="mn-upload-link" style="background:#fff3cd;color:#856404">${item.name}</span>`
   ).join('');
 }
 
@@ -3939,7 +3939,7 @@ function renderAdminPanel() {
       <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;padding:16px">
         <strong style="display:block;font-size:13px;color:var(--navy);margin-bottom:12px">SC Data Sync Status</strong>
         <div id="admin-sync-status" style="font-size:13px;color:#888">Loading...</div>
-        <button class="seo-btn" style="margin-top:12px;background:var(--navy)" onclick="adminLoadSync()">&#x1F504; Refresh Status</button>
+        <button class="seo-btn" style="margin-top:12px;background:var(--navy)" onclick="adminLoadSync()">Refresh Status</button>
       </div>
     </div>
   </div>`;
@@ -4004,23 +4004,32 @@ async function loadMakeClientsIntoDropdown() {
   let clients = _makeClientsCache;
   if (!clients) {
     try {
-      const res = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/make/data-store-records?dataStoreId=157873&teamId=583475');
-      if (!res.ok) throw new Error('fetch failed ' + res.status);
-      const data = await res.json();
-      console.log('[Make] raw response:', JSON.stringify(data).slice(0, 500));
-      // Make.com v2 returns { data: [{key, value}] } or { records: [...] }
-      const records = Array.isArray(data.data) ? data.data
-        : data.records || data.data?.records || (Array.isArray(data) ? data : []);
-      console.log('[Make] records count:', records.length);
-      if (records.length) {
-        console.log('[Make] first record sample:', JSON.stringify(records[0]));
-        const mapped = records.map(r => {
+      // Fetch all pages from Make.com datastore
+      const allRecords = [];
+      let offset = 0;
+      const limit = 100;
+      while (true) {
+        const res = await fetch(
+          CLAUDE_PROXY.replace(/\/$/, '') +
+          `/make/data-store-records?dataStoreId=157873&teamId=583475&limit=${limit}&offset=${offset}`
+        );
+        if (!res.ok) throw new Error('fetch failed ' + res.status);
+        const data = await res.json();
+        const page = Array.isArray(data.data) ? data.data
+          : data.records || data.data?.records || (Array.isArray(data) ? data : []);
+        allRecords.push(...page);
+        // Stop if this page was smaller than limit (last page)
+        if (page.length < limit) break;
+        offset += limit;
+        if (offset > 2000) break; // safety cap
+      }
+      console.log('[Make] total records fetched:', allRecords.length);
+      if (allRecords.length) {
+        const mapped = allRecords.map(r => {
           const v = r.value || r.data || r;
-          // Detect bq_dataset by value pattern (all datasets start with searchconsole_)
           const bq = v.bq_dataset || v.dataset || v.bigquery_dataset || v.bq
             || Object.values(v).find(val => typeof val === 'string' && val.startsWith('searchconsole_'))
             || '';
-          // Detect name: try known keys, then any short non-url string that isn't the dataset
           const name = v.name || v.client_name || v['Client Name'] || v['Name'] || v.title || v.label
             || Object.values(v).find(val => typeof val === 'string' && val !== bq && !val.startsWith('http') && val.length > 1 && val.length < 60)
             || r.key || bq;
