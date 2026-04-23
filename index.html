@@ -29,10 +29,10 @@
   .custom-row { display: flex; gap: 8px; margin-top: 4px; }
   .text-input { flex: 1; background: #fff; border: 0.5px solid #e0ddd6; border-radius: 12px; padding: 10px 14px; font-size: 15px; font-family: inherit; color: #1a1a1a; outline: none; }
   .text-input:focus { border-color: #4caf82; }
-  .green-btn { background: #4caf82; border: none; border-radius: 12px; padding: 10px 16px; color: #fff; font-size: 20px; cursor: pointer; line-height: 1; }
-  .green-btn:hover { background: #3d9e70; }
-  .green-btn-sm { background: #4caf82; border: none; border-radius: 8px; padding: 8px 18px; color: #fff; font-size: 14px; font-family: inherit; cursor: pointer; }
-  .green-btn-sm:hover { background: #3d9e70; }
+  .green-btn { background: var(--coral); border: none; border-radius: 12px; padding: 10px 16px; color: #fff; font-size: 20px; cursor: pointer; line-height: 1; }
+  .green-btn:hover { background: #e8823a; }
+  .green-btn-sm { background: var(--coral); border: none; border-radius: 8px; padding: 8px 18px; color: #fff; font-size: 14px; font-family: inherit; cursor: pointer; }
+  .green-btn-sm:hover { background: #e8823a; }
 
   /* PIN */
   .pin-title { font-size: 17px; font-weight: 500; margin-bottom: 6px; }
@@ -57,7 +57,7 @@
   .switch-btn { background: none; border: 0.5px solid #e0ddd6; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #888; cursor: pointer; font-family: inherit; }
   .saving-label { font-size: 12px; color: #aaa; }
   .progress-bar { background: #e8e8e5; border-radius: 4px; height: 4px; margin-top: 12px; overflow: hidden; }
-  .progress-fill { height: 100%; background: #4caf82; border-radius: 4px; transition: width 0.3s; }
+  .progress-fill { height: 100%; background: var(--coral); border-radius: 4px; transition: width 0.3s; }
   .progress-label { font-size: 12px; color: #aaa; margin-top: 4px; }
   .error-box { background: #fff3f3; border: 0.5px solid #f5c6c6; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #c0392b; margin-bottom: 12px; }
   .empty-state { text-align: center; color: #aaa; font-size: 14px; padding: 1.5rem 0; }
@@ -212,8 +212,8 @@
   .modal-row { display: flex; gap: 10px; }
   .modal-row .modal-field { flex: 1; }
   .modal-footer { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px 16px; border-top: 0.5px solid #e8e8e5; }
-  .modal-save-btn { background: #4caf82; border: none; border-radius: 10px; padding: 10px 22px; color: #fff; font-size: 14px; font-family: inherit; cursor: pointer; font-weight: 500; }
-  .modal-save-btn:hover { background: #3d9e70; }
+  .modal-save-btn { background: var(--coral); border: none; border-radius: 10px; padding: 10px 22px; color: #fff; font-size: 14px; font-family: inherit; cursor: pointer; font-weight: 500; }
+  .modal-save-btn:hover { background: #e8823a; }
   .modal-delete-btn { background: none; border: 0.5px solid #e0ddd6; border-radius: 10px; padding: 10px 16px; color: #aaa; font-size: 13px; font-family: inherit; cursor: pointer; }
   .modal-delete-btn:hover { border-color: #e57373; color: #e57373; }
   /* Multi-day picker */
@@ -304,16 +304,16 @@
   .ts-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px; }
   .ts-filter-btn { background:#fff; border:0.5px solid #e0ddd6; border-radius:8px; padding:5px 12px; font-size:12px; color:#888; cursor:pointer; font-family:inherit; transition:all 0.15s; }
   .ts-filter-btn.active { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
-  .ts-add-manual-btn { background:#4caf82; border:none; border-radius:8px; padding:6px 14px; color:#fff; font-size:12px; font-family:inherit; cursor:pointer; margin-left:auto; }
-  .ts-add-manual-btn:hover { background:#3d9e70; }
+  .ts-add-manual-btn { background:var(--coral); border:none; border-radius:8px; padding:6px 14px; color:#fff; font-size:12px; font-family:inherit; cursor:pointer; margin-left:auto; }
+  .ts-add-manual-btn:hover { background:#e8823a; }
   .ts-day-block { background:#fff; border:0.5px solid #e0ddd6; border-radius:14px; overflow:hidden; }
   .ts-day-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:0.5px solid #f0ede8; }
   .ts-day-name { font-size:14px; font-weight:600; }
   .ts-day-name.today-name { color:#4caf82; }
-  .ts-day-total { font-size:13px; color:#4caf82; font-weight:600; background:#eef7f2; border-radius:20px; padding:2px 10px; }
+  .ts-day-total { font-size:13px; color:var(--coral); font-weight:600; background:rgba(253,147,87,0.1); border-radius:20px; padding:2px 10px; }
   .ts-day-bar-wrap { padding:6px 16px 8px; }
   .ts-day-bar-bg { background:#f0ede8; border-radius:4px; height:6px; overflow:hidden; }
-  .ts-day-bar-fill { height:100%; border-radius:4px; background:#4caf82; transition:width 0.3s; }
+  .ts-day-bar-fill { height:100%; border-radius:4px; background:var(--coral); transition:width 0.3s; }
   .ts-day-bar-fill.busy { background:#f39c12; }
   .ts-day-bar-fill.over { background:#e74c3c; }
   .ts-entries { padding:0 10px 10px; }
@@ -335,8 +335,19 @@
   .ts-summary-h { font-size:13px; font-weight:600; color:#1a1a1a; white-space:nowrap; }
   .ts-total-row { display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:1.5px solid #e8e8e5; }
   .ts-total-label { font-size:13px; font-weight:600; }
-  .ts-total-val { font-size:16px; font-weight:700; color:#4caf82; }
+  .ts-total-val { font-size:16px; font-weight:700; color:var(--coral); }
   .ts-empty { text-align:center; color:#aaa; font-size:14px; padding:2rem 0; }
+  /* Marketing client time */
+  .mt-section-title { font-size:12px; font-weight:700; color:#aaa; text-transform:uppercase; letter-spacing:0.06em; margin:24px 0 10px; }
+  .mt-log-form { background:#fff; border:0.5px solid #e0ddd6; border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  .mt-form-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .mt-select { flex:2; min-width:160px; background:#f5f5f3; border:none; border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit; color:#1a1a1a; outline:none; cursor:pointer; }
+  .mt-date-input,.mt-hours-input,.mt-note-input { background:#f5f5f3; border:none; border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit; color:#1a1a1a; outline:none; }
+  .mt-date-input { width:140px; }
+  .mt-hours-input { width:80px; }
+  .mt-note-input { flex:2; min-width:120px; }
+  .mt-log-btn { background:var(--coral); border:none; border-radius:8px; padding:8px 16px; color:#fff; font-size:13px; font-family:inherit; cursor:pointer; font-weight:600; white-space:nowrap; }
+  .mt-log-btn:hover { background:#e8823a; }
   /* Manual entry modal */
   .manual-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:1100; display:flex; align-items:center; justify-content:center; padding:1rem; opacity:0; transition:opacity 0.18s; pointer-events:none; }
   .manual-overlay.open { opacity:1; pointer-events:all; }
@@ -1043,8 +1054,9 @@ function renderList(loading){
   const active=allItems.filter(i=>!i.done);
   const done=allItems.filter(i=>i.done);
   const pct=items.length?Math.round(done.length/items.length*100):0;
-  const isTaskView=['list','kanban','calendar','workload'].includes(currentView);
-  const isSideView=['projects','marketing-review','meeting-notes','admin-panel','timesheets'].includes(currentView);
+  const isTaskView=['list','kanban','calendar'].includes(currentView);
+  const isTimesheetsActive=['timesheets','workload'].includes(currentView);
+  const isSideView=['projects','marketing-review','meeting-notes','admin-panel','timesheets','workload'].includes(currentView);
   const tv=currentView;
 
   // SVG icons
@@ -1073,13 +1085,15 @@ function renderList(loading){
             <button class="sidebar-subitem${tv==='list'?' active':''}" onclick="setView('list')">List</button>
             <button class="sidebar-subitem${tv==='kanban'?' active':''}" onclick="setView('kanban')">Kanban</button>
             <button class="sidebar-subitem${tv==='calendar'?' active':''}" onclick="setView('calendar')">Calendar</button>
-            <button class="sidebar-subitem${tv==='workload'?' active':''}" onclick="setView('workload')">Workload</button>
           `:''}
-          <button class="sidebar-item${tv==='timesheets'?' active':''}" onclick="setView('timesheets')">${icoTime} Timesheets</button>
+          <button class="sidebar-item${isTimesheetsActive?' active':''}" onclick="setView('timesheets')">${icoTime} Timesheets</button>
+          ${isTimesheetsActive?`
+            <button class="sidebar-subitem${tv==='timesheets'?' active':''}" onclick="setView('timesheets')">My Time</button>
+            <button class="sidebar-subitem${tv==='workload'?' active':''}" onclick="setView('workload')">Schedule</button>
+          `:''}
           ${CLICKUP_USERS.includes(currentUser)?`<button class="sidebar-item${tv==='projects'?' active':''}" onclick="setView('projects')">${icoProj} Projects</button>`:''}
           ${(currentUser===SEO_MARKETING_HEAD||currentUser==='Holly')?`<button class="sidebar-item${tv==='marketing-review'?' active':''}" onclick="setView('marketing-review')">${icoMR} Marketing Review</button>`:''}
           ${(SEO_MARKETING_TEAM.includes(currentUser)||currentUser==='Holly')?`<button class="sidebar-item${tv==='meeting-notes'?' active':''}" onclick="setView('meeting-notes')">${icoNotes} Meeting Notes</button>`:''}
-          ${currentUser==='Holly'?`<button class="sidebar-item${tv==='admin-panel'?' active':''}" onclick="setView('admin-panel')">${icoAdmin} Admin</button>`:''}
         </nav>
         <div class="sidebar-footer">
           <div class="sidebar-user-row">
@@ -1103,7 +1117,7 @@ function renderList(loading){
             ${!isTeamView()?`<button class="notif-btn" onclick="openNotifPanel()" title="Notifications"><span>🔔</span><span class="notif-badge" id="notif-badge" style="display:none">0</span></button>`:""}
           </div>
         </div>
-        ${isTaskView?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label">${done.length} of ${items.length} done</div>`:''}
+        ${isTaskView&&!isSideView?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label">${done.length} of ${items.length} done</div>`:''}
         <div class="error-box" id="error-box" style="display:none"></div>
         <div id="task-list">${loading?"<div class='loading-state'>Loading...</div>":renderCurrentViewAndInit(active)}</div>
         ${!isTeamView()&&isTaskView&&!['calendar','workload'].includes(tv)?renderAddSection():""}
@@ -1143,6 +1157,7 @@ function renderCurrentView(active){
 function setView(v){
   currentView=v;
   localStorage.setItem(VIEW_KEY,v);
+  if(v==='timesheets') _marketingTimeEntries=null;
   if(v==="projects" && !cuLoaded && !cuLoading) loadClickUpTasks();
   else renderList();
 }
@@ -2609,6 +2624,42 @@ async function clearTrackedTime(){
 // ── Timesheets view ───────────────────────────────────────
 let tsFilter="week"; // "today"|"week"|"month"|"all"
 
+async function loadMarketingTime(){
+  const user = isTeamView() ? teamViewUser : currentUser;
+  if (!SEO_MARKETING_TEAM.includes(user)) { _marketingTimeEntries = []; renderList(); return; }
+  if (!_makeClientsCache) await loadMakeClientsIntoDropdown();
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/marketing_time?user_name=eq.${encodeURIComponent(user)}&order=date.desc&limit=500`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    _marketingTimeEntries = res.ok ? (await res.json()) : [];
+  } catch(e) { _marketingTimeEntries = []; }
+  renderList();
+}
+
+async function saveMarketingTime(){
+  const sel = document.getElementById('mt-client-sel');
+  const clientId = sel?.value;
+  const clientName = sel?.options[sel.selectedIndex]?.text || '';
+  const date = document.getElementById('mt-date')?.value;
+  const hours = parseFloat(document.getElementById('mt-hours')?.value);
+  const note = document.getElementById('mt-note')?.value?.trim() || '';
+  if (!clientId || !date || !hours || hours <= 0) { alert('Please fill in client, date and hours.'); return; }
+  const user = isTeamView() ? teamViewUser : currentUser;
+  const res = await supabaseWrite('marketing_time', { user_name: user, client_id: clientId, client_name: clientName, date, hours: Math.round(hours*100)/100, note: note||null }, 'return=minimal');
+  if (!res.ok) { alert('Error saving: ' + res.status); return; }
+  _marketingTimeEntries = null;
+  await loadMarketingTime();
+}
+
+async function deleteMarketingTime(id){
+  await fetch(`${SUPABASE_URL}/rest/v1/marketing_time?id=eq.${encodeURIComponent(id)}`, {
+    method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  _marketingTimeEntries = null;
+  await loadMarketingTime();
+}
+
 function renderTimesheetsView(){
   // Gather all sessions from all items (including done)
   const allItems=activeItems(); // include done tasks; uses teamViewItems if in team view
@@ -2694,7 +2745,7 @@ function renderTimesheetsView(){
       ${["today","week","month","all"].map(f=>`<button class="ts-filter-btn${tsFilter===f?" active":""}" onclick="setTsFilter('${f}')">${{today:"Today",week:"This week",month:"This month",all:"All time"}[f]}</button>`).join("")}
       ${!isTeamView()?`<button class="ts-add-manual-btn" onclick="openManual()">➕ Log time</button>`:""}
     </div>
-    ${filtered.length===0?`<div class="ts-empty">No time logged for ${filterLabel[tsFilter].toLowerCase()}.<br><br>${!isTeamView()?`<button class="ts-add-manual-btn" onclick="openManual()">➕ Log time manually</button>`:""}</div>`:`
+    ${filtered.length===0?`<div class="ts-empty">No time logged for ${filterLabel[tsFilter].toLowerCase()}.<br><br>${!isTeamView()?`<button class="ts-add-manual-btn" onclick="openManual()">Log time manually</button>`:""}</div>`:`
     ${dayBlocks}
     <div class="ts-summary">
       <div class="ts-summary-title">Summary — ${filterLabel[tsFilter]}</div>
@@ -2704,6 +2755,54 @@ function renderTimesheetsView(){
         <span class="ts-total-val">${fmtHours(totalH)||"0h"}</span>
       </div>
     </div>`}
+  ${(()=>{
+    const mtUser = isTeamView() ? teamViewUser : currentUser;
+    if (!SEO_MARKETING_TEAM.includes(mtUser)) return '';
+    if (_marketingTimeEntries === null) {
+      setTimeout(()=>loadMarketingTime(), 0);
+      return `<div class="mt-section-title">Client Time</div><div class="ts-empty" style="padding:1rem 0">Loading...</div>`;
+    }
+    const mtClients = (_makeClientsCache||MAKE_CLIENTS_FALLBACK).filter(c => {
+      if (currentUser===SEO_MARKETING_HEAD||currentUser==='Holly') return true;
+      return (c.assignee||'').toLowerCase().split('@')[0]===mtUser.toLowerCase();
+    });
+    const todayStr=isoToday();
+    const td=new Date(todayStr+'T00:00:00');
+    const mtFiltered=_marketingTimeEntries.filter(e=>{
+      if(!e.date) return tsFilter==='all';
+      const d=new Date(e.date+'T00:00:00');
+      const diff=Math.round((td-d)/86400000);
+      if(tsFilter==='today') return e.date===todayStr;
+      if(tsFilter==='week') return diff>=0&&diff<7;
+      if(tsFilter==='month') return diff>=0&&diff<30;
+      return true;
+    });
+    const mtByDate={};
+    mtFiltered.forEach(e=>{if(!mtByDate[e.date])mtByDate[e.date]=[];mtByDate[e.date].push(e);});
+    const mtDates=Object.keys(mtByDate).sort((a,b)=>b.localeCompare(a));
+    const mtByClient={};
+    mtFiltered.forEach(e=>{if(!mtByClient[e.client_id])mtByClient[e.client_id]={name:e.client_name,h:0};mtByClient[e.client_id].h=Math.round((mtByClient[e.client_id].h+e.hours)*100)/100;});
+    const mtTotal=Math.round(mtFiltered.reduce((a,e)=>a+e.hours,0)*100)/100;
+    const logForm = !isTeamView()?`
+      <div class="mt-log-form">
+        <div class="mt-form-row">
+          <select id="mt-client-sel" class="mt-select"><option value="">Select client...</option>${mtClients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
+          <input type="date" id="mt-date" class="mt-date-input" value="${todayStr}">
+          <input type="number" id="mt-hours" class="mt-hours-input" placeholder="Hours" min="0.25" step="0.25">
+          <input type="text" id="mt-note" class="mt-note-input" placeholder="Note (optional)">
+          <button class="mt-log-btn" onclick="saveMarketingTime()">Log Time</button>
+        </div>
+      </div>`:'';
+    const mtBlocks=mtDates.map(date=>{
+      const entries=mtByDate[date];
+      const dayH=Math.round(entries.reduce((a,e)=>a+e.hours,0)*100)/100;
+      const d2=new Date(date+'T00:00:00');const diff=Math.round((td-d2)/86400000);
+      const lbl=diff===0?'Today':diff===1?'Yesterday':d2.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'});
+      return `<div class="ts-day-block"><div class="ts-day-header"><span class="ts-day-name${diff===0?' today-name':''}">${lbl}</span><span class="ts-day-total">${fmtHours(dayH)}</span></div><div class="ts-entries">${entries.map(e=>`<div class="ts-entry"><div class="ts-entry-dot" style="background:var(--coral)"></div><div class="ts-entry-task" style="cursor:default">${esc(e.client_name)}</div>${e.note?`<span class="ts-entry-note">${esc(e.note)}</span>`:''}<span class="ts-entry-time">${fmtHours(e.hours)}</span>${!isTeamView()?`<button class="ts-entry-del" onclick="deleteMarketingTime('${e.id}')">&times;</button>`:''}</div>`).join('')}</div></div>`;
+    }).join('');
+    const mtSummary=mtFiltered.length?`<div class="ts-summary" style="margin-top:12px"><div class="ts-summary-title">Client Summary — ${filterLabel[tsFilter]}</div>${Object.values(mtByClient).sort((a,b)=>b.h-a.h).map(c=>`<div class="ts-summary-row"><div class="ts-entry-dot" style="background:var(--coral);flex-shrink:0;width:8px;height:8px;border-radius:50%"></div><span class="ts-summary-task" style="margin-left:8px">${esc(c.name)}</span><span class="ts-summary-h">${fmtHours(c.h)}</span></div>`).join('')}<div class="ts-total-row"><span class="ts-total-label">Total client time</span><span class="ts-total-val">${fmtHours(mtTotal)||'0h'}</span></div></div>`:'' ;
+    return `<div class="mt-section-title">Client Time</div>${logForm}${mtBlocks||`<div class="ts-empty" style="padding:1.5rem 0">No client time logged for ${filterLabel[tsFilter].toLowerCase()}.</div>`}${mtSummary}`;
+  })()}
   </div>`;
 }
 
@@ -3544,6 +3643,7 @@ let _mrScDataCache = [];
 let _mrPerformanceCache = null;
 let _mnCurrentClientId = null;
 let _mnCurrentClientName = null;
+let _marketingTimeEntries = null;
 
 function renderMarketingReview() {
   return `<div class="seo-view-wrap" style="max-width:1200px">
@@ -4589,14 +4689,16 @@ async function loadMakeClientsIntoDropdown() {
     }
   }
 
-  // Meeting Notes sidebar (filtered by assignee for non-Sarah; Sarah sees all grouped)
+  // Meeting Notes sidebar (Sarah/Holly see all grouped; others see own clients)
   const mnList = document.getElementById('mn-client-list');
   if (mnList) {
-    const filtered = currentUser === SEO_MARKETING_HEAD
+    const mnViewingUser = isTeamView() ? teamViewUser : currentUser;
+    const isAdmin = currentUser === SEO_MARKETING_HEAD || currentUser === 'Holly';
+    const filtered = isAdmin
       ? clients
-      : clients.filter(c => !c.assignee || c.assignee.toLowerCase().split('@')[0] === currentUser.toLowerCase());
+      : clients.filter(c => !c.assignee || c.assignee.toLowerCase().split('@')[0] === mnViewingUser.toLowerCase());
     if (filtered.length) {
-      if (currentUser === SEO_MARKETING_HEAD) {
+      if (isAdmin) {
         mnList.innerHTML = buildGroupedSidebar(filtered, 'mnSelectClient');
       } else {
         mnList.innerHTML = filtered.map(c =>
