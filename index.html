@@ -997,6 +997,8 @@ function renderList(loading){
   const active=allItems.filter(i=>!i.done);
   const done=allItems.filter(i=>i.done);
   const pct=items.length?Math.round(done.length/items.length*100):0;
+  // Use effectiveUser for all role-based checks
+  const effectiveUser = teamViewUser || currentUser;
   document.getElementById("app").innerHTML=`
     <div class="list-wrap">
       <div class="list-header">
@@ -1041,10 +1043,10 @@ function renderList(loading){
             <button class="nav-menu-item${currentView==='timesheets'?" active":""}" onclick="setView('timesheets');closeAllNavDropdowns()"><span class="nav-item-icon">🕐</span> Timesheets</button>
           </div>
         </div>
-        ${CLICKUP_USERS.includes(currentUser)?`<button class="nav-projects-btn${currentView==='projects'?" active":""}" onclick="setView('projects')">📁 Projects</button>`:""}
-        ${currentUser===SEO_MARKETING_HEAD?`<button class="nav-projects-btn${currentView==='marketing-review'?" active":""}" onclick="setView('marketing-review')">Marketing Review</button>`:""}
-        ${SEO_MARKETING_TEAM.includes(currentUser)?`<button class="nav-projects-btn${currentView==='meeting-notes'?" active":""}" onclick="setView('meeting-notes')">Meeting Notes</button>`:""}
-        ${currentUser==='Holly'?`<button class="nav-projects-btn${currentView==='admin-panel'?" active":""}" onclick="setView('admin-panel')">Admin</button>`:""}
+        ${CLICKUP_USERS.includes(effectiveUser)?`<button class="nav-projects-btn${currentView==='projects'?" active":""}" onclick="setView('projects')">📁 Projects</button>`:""}
+        ${effectiveUser===SEO_MARKETING_HEAD?`<button class="nav-projects-btn${currentView==='marketing-review'?" active":""}" onclick="setView('marketing-review')">Marketing Review</button>`:""}
+        ${SEO_MARKETING_TEAM.includes(effectiveUser)?`<button class="nav-projects-btn${currentView==='meeting-notes'?" active":""}" onclick="setView('meeting-notes')">Meeting Notes</button>`:""}
+        ${effectiveUser==='Holly'?`<button class="nav-projects-btn${currentView==='admin-panel'?" active":""}" onclick="setView('admin-panel')">Admin</button>`:""}
       </div>
       <div class="error-box" id="error-box" style="display:none"></div>
       <div id="task-list">${loading?"<div class='loading-state'>Loading...</div>":renderCurrentViewAndInit(active)}</div>
