@@ -3429,10 +3429,19 @@ async function supabaseWrite(table, data, prefer = 'resolution=merge-duplicates'
 }
 
 // Save SC selections to Supabase
-async function saveScSelections(month, clientId, selectedUrls) {
+async function saveScSelections(month, clientId, findings) {
   try {
-    await supabaseWrite('sc_selections', { month, client_id: clientId, selected_urls: selectedUrls, selected_by: currentUser.toLowerCase() + '@livetech.co.uk' });
-  } catch(e) { console.error('saveScSelections error:', e); }
+    // DELETE existing row first so we don't need a unique constraint
+    await fetch(`${SUPABASE_URL}/rest/v1/sc_selections?month=eq.${month}&client_id=eq.${encodeURIComponent(clientId)}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const res = await supabaseWrite('sc_selections', {
+      month, client_id: clientId, selected_urls: findings,
+      selected_by: currentUser.toLowerCase() + '@livetech.co.uk'
+    }, 'return=minimal');
+    if (!res.ok) throw new Error(`Supabase ${res.status}`);
+  } catch(e) { console.error('saveScSelections error:', e); throw e; }
 }
 
 // Load meeting note from Supabase
@@ -3475,6 +3484,23 @@ async function loadScSelections(month, clientId) {
 }
 
 // ---- Marketing Review Tab (Sarah only) ----
+const SC_FINDINGS = [
+  'Crawled – currently not indexed',
+  'Discovered – currently not indexed',
+  'Page with redirect',
+  'Not found (404)',
+  'Blocked due to other 4xx issue',
+  'Alternative page with proper canonical tag',
+  'Excluded by noindex tag',
+  'Blocked due to access forbidden (403)',
+  'Server error (5xx)',
+  'Duplicate without user-selected canonical',
+  'Soft 404',
+  'Blocked by robots.txt',
+  'Core Web Vitals issue',
+  'Mobile usability issue',
+  'Low clicks / high impressions opportunity',
+];
 let _mrCurrentClientId = null;
 let _mrCurrentClientName = null;
 let _mrScDataCache = [];
@@ -3514,36 +3540,16 @@ function renderMarketingReview() {
               <button id="mr-tab-btn-performance" onclick="mrSwitchTab('performance')" style="padding:8px 18px;font-size:13px;font-weight:500;font-family:inherit;border:none;background:none;color:#888;cursor:pointer">Performance</button>
             </div>
             <div id="mr-tab-findings">
-              <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden;margin-bottom:12px">
-                ${[
-                  'Crawled – currently not indexed',
-                  'Discovered – currently not indexed',
-                  'Page with redirect',
-                  'Not found (404)',
-                  'Blocked due to other 4xx issue',
-                  'Alternative page with proper canonical tag',
-                  'Excluded by noindex tag',
-                  'Blocked due to access forbidden (403)',
-                  'Server error (5xx)',
-                  'Duplicate without user-selected canonical',
-                  'Soft 404',
-                  'Core Web Vitals issue',
-                  'Mobile usability issue',
-                  'Low clicks / high impressions opportunity',
-                ].map((item, i) => `
-                  <div class="mr-finding-row" style="${i>0?'border-top:0.5px solid #f0ede8':''}">
-                    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px">
-                      <input type="checkbox" data-finding="${item}" onclick="mrFindingOuterClick(this,event)" style="width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--navy)">
-                      <span style="font-size:13px;flex:1;cursor:pointer" onclick="mrToggleFinding(this.parentElement)">${item}</span>
-                      <span class="mr-count-badge" style="display:none;background:#e8f2e8;color:#2a6b2a;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;flex-shrink:0"></span>
-                      <span class="mr-finding-caret" style="font-size:11px;color:#aaa;cursor:pointer" onclick="mrToggleFinding(this.parentElement)">▸</span>
-                    </div>
-                    <div class="mr-finding-body" style="display:none;padding:0 14px 12px 38px">
-                      <div class="mr-url-list" style="max-height:220px;overflow-y:auto;font-size:12px"></div>
-                    </div>
-                  </div>`).join('')}
+              <div id="mr-findings-list" style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden;margin-bottom:10px">
+                <div id="mr-findings-empty" style="text-align:center;padding:24px;color:#aaa;font-size:13px">No findings added yet. Select a category below to add one.</div>
               </div>
-              <button id="mr-show-all-findings" onclick="mrShowAllFindings()" style="display:none;font-size:12px;color:#888;font-family:inherit;background:none;border:none;cursor:pointer;padding:4px 0 8px;text-decoration:underline;text-align:left">+ Show all findings</button>
+              <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;gap:8px;align-items:center">
+                <select id="mr-finding-select" class="seo-select" style="flex:1;font-size:13px">
+                  <option value="">Add a GSC finding...</option>
+                  ${SC_FINDINGS.map(f => `<option value="${f}">${f}</option>`).join('')}
+                </select>
+                <button class="seo-btn" style="background:var(--navy);padding:7px 16px;white-space:nowrap" onclick="mrAddSelectedFinding()">+ Add</button>
+              </div>
               <div style="display:flex;gap:10px;align-items:center">
                 <button class="seo-btn" style="background:var(--navy)" onclick="mrSave()">Save Findings</button>
                 <div id="mr-msg" style="display:none;padding:8px 12px;border-radius:8px;font-size:13px;flex:1"></div>
@@ -3599,31 +3605,20 @@ async function mrLoadData() {
   if (dash) dash.style.display = 'block';
   // Restore findings: selections is [{name, urls}] or legacy string[]
   const findingsData = Array.isArray(selections) ? selections : [];
-  document.querySelectorAll('.mr-finding-row').forEach(row => {
-    const cb = row.querySelector('input[type="checkbox"]');
-    if (!cb) return;
-    const key = cb.dataset.finding;
-    const saved = findingsData.find(f => (typeof f === 'string' ? f === key : f.name === key));
-    cb.checked = !!saved;
-    row.style.display = '';
-    if (saved?.urls?.length) {
-      const body = row.querySelector('.mr-finding-body');
-      const caret = row.querySelector('.mr-finding-caret');
-      if (body) { body.style.display = 'block'; }
-      if (caret) caret.textContent = '▾';
-      const urlList = body?.querySelector('.mr-url-list');
-      if (urlList) mrEnsureUrls(urlList, key, () => {
-        saved.urls.forEach(u => {
-          const uc = urlList.querySelector(`input[data-url="${CSS.escape(u)}"]`);
-          if (uc) uc.checked = true;
-        });
-        mrUpdateFindingCount(row);
-      });
-    } else {
-      mrUpdateFindingCount(row);
-    }
+  // Clear existing dynamic finding rows and reset dropdown
+  const mrList = document.getElementById('mr-findings-list');
+  if (mrList) mrList.querySelectorAll('.mr-finding-row').forEach(r => r.remove());
+  const mrEmpty = document.getElementById('mr-findings-empty');
+  if (mrEmpty) mrEmpty.style.display = findingsData.length ? 'none' : 'block';
+  const mrSel = document.getElementById('mr-finding-select');
+  if (mrSel) Array.from(mrSel.options).forEach(o => o.style.display = '');
+  // Re-add saved findings
+  findingsData.forEach(f => {
+    const name = typeof f === 'string' ? f : f.name;
+    const count = f.count ?? '';
+    const urls = f.urls || [];
+    if (name) mrAddFinding(name, count, urls);
   });
-  mrApplyFindingVisibility();
   const tbody = document.getElementById('mr-tbody');
   if (!tbody) return;
   if (scData.length === 0) {
@@ -3666,8 +3661,13 @@ async function mrRefresh() {
     if (!rawRows.length) { showSeoMsg('mr-msg', 'No data found in BigQuery for this period.', 'info'); return; }
     const rows = rawRows.map(r => r.f ? { url: r.f[0].v, clicks: r.f[1].v, impressions: r.f[2].v, avg_position: r.f[3].v } : r);
     const records = rows.map(r => ({ month, client_id: clientId, url: r.url, clicks: parseInt(r.clicks)||0, impressions: parseInt(r.impressions)||0, avg_position: parseFloat(r.avg_position)||0, source: 'search-console' }));
-    const upsert = await supabaseWrite('sc_data', records);
-    if (!upsert.ok) throw new Error(`Supabase upsert ${upsert.status}`);
+    // Delete old rows for this month/client then insert fresh
+    await fetch(`${SUPABASE_URL}/rest/v1/sc_data?month=eq.${month}&client_id=eq.${encodeURIComponent(clientId)}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const upsert = await supabaseWrite('sc_data', records, 'return=minimal');
+    if (!upsert.ok) throw new Error(`Supabase insert ${upsert.status}`);
     showSeoMsg('mr-msg', `Synced ${records.length} URLs.`, 'success');
     await mrLoadData();
   } catch(e) {
@@ -3684,14 +3684,17 @@ async function mrSave() {
   if (!month) return;
   const findings = [];
   document.querySelectorAll('.mr-finding-row').forEach(row => {
-    const cb = row.querySelector(':scope > div > input[type="checkbox"]');
+    const name = row.querySelector('.mr-finding-name')?.textContent?.trim();
+    const count = parseInt(row.querySelector('.mr-gsc-count')?.value) || null;
     const selectedUrls = Array.from(row.querySelectorAll('.mr-url-list input[type="checkbox"]:checked')).map(u => u.dataset.url);
-    if (cb?.checked || selectedUrls.length > 0) {
-      findings.push({ name: cb?.dataset.finding, urls: selectedUrls });
-    }
+    if (name) findings.push({ name, count, urls: selectedUrls });
   });
-  await saveScSelections(month, _mrCurrentClientId, findings);
-  showSeoMsg('mr-msg', `Saved ${findings.length} finding${findings.length!==1?'s':''}.`, 'success');
+  try {
+    await saveScSelections(month, _mrCurrentClientId, findings);
+    showSeoMsg('mr-msg', `Saved ${findings.length} finding${findings.length!==1?'s':''}.`, 'success');
+  } catch(e) {
+    showSeoMsg('mr-msg', `Error saving: ${e.message}`, 'error');
+  }
 }
 
 function mrEnsureUrls(urlList, findingName, callback) {
@@ -3711,23 +3714,71 @@ function mrEnsureUrls(urlList, findingName, callback) {
   if (callback) callback();
 }
 
-function mrFindingOuterClick(cb, event) {
-  event.stopPropagation();
-  const row = cb.closest('.mr-finding-row');
-  const body = row.querySelector('.mr-finding-body');
-  const caret = row.querySelector('.mr-finding-caret');
-  const urlList = body.querySelector('.mr-url-list');
-  if (cb.checked) {
+function mrAddFinding(name, gscCount, savedUrls) {
+  const list = document.getElementById('mr-findings-list');
+  if (!list) return;
+  const empty = document.getElementById('mr-findings-empty');
+  if (empty) empty.style.display = 'none';
+  const rowCount = list.querySelectorAll('.mr-finding-row').length;
+  const div = document.createElement('div');
+  div.className = 'mr-finding-row';
+  if (rowCount > 0) div.style.borderTop = '0.5px solid #f0ede8';
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer" onclick="mrToggleFinding(this)">
+      <span class="mr-finding-name" style="font-size:13px;flex:1">${name}</span>
+      <input type="number" class="mr-gsc-count" placeholder="Pages in GSC" min="0" value="${gscCount ?? ''}"
+        onclick="event.stopPropagation()"
+        style="width:120px;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:4px 8px;font-family:inherit;color:#555;text-align:right">
+      <span class="mr-count-badge" style="display:none;background:#e8f2e8;color:#2a6b2a;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;flex-shrink:0"></span>
+      <span class="mr-finding-caret" style="font-size:11px;color:#aaa">▸</span>
+      <button onclick="event.stopPropagation();mrRemoveFinding(this)"
+        style="background:none;border:none;color:#ccc;cursor:pointer;font-size:18px;padding:0 2px;line-height:1;font-family:inherit">&times;</button>
+    </div>
+    <div class="mr-finding-body" style="display:none;padding:0 14px 12px 14px">
+      <div class="mr-url-list" style="max-height:220px;overflow-y:auto;font-size:12px"></div>
+    </div>`;
+  list.appendChild(div);
+  // Hide this option in the dropdown
+  const sel = document.getElementById('mr-finding-select');
+  if (sel) Array.from(sel.options).forEach(o => { if (o.value === name) o.style.display = 'none'; });
+  // Restore saved URLs
+  if (savedUrls?.length) {
+    const body = div.querySelector('.mr-finding-body');
+    const caret = div.querySelector('.mr-finding-caret');
     body.style.display = 'block';
     caret.textContent = '▾';
-    mrEnsureUrls(urlList, cb.dataset.finding, () => {
-      urlList.querySelectorAll('input[type="checkbox"]').forEach(u => u.checked = true);
-      mrUpdateFindingCount(row);
+    const urlList = div.querySelector('.mr-url-list');
+    mrEnsureUrls(urlList, name, () => {
+      savedUrls.forEach(u => {
+        const uc = urlList.querySelector(`input[data-url="${CSS.escape(u)}"]`);
+        if (uc) uc.checked = true;
+      });
+      mrUpdateFindingCount(div);
     });
-  } else {
-    urlList.querySelectorAll('input[type="checkbox"]').forEach(u => u.checked = false);
-    mrUpdateFindingCount(row);
   }
+  return div;
+}
+
+function mrAddSelectedFinding() {
+  const sel = document.getElementById('mr-finding-select');
+  const name = sel?.value;
+  if (!name) return;
+  mrAddFinding(name);
+  sel.value = '';
+}
+
+function mrRemoveFinding(btn) {
+  const row = btn.closest('.mr-finding-row');
+  const name = row.querySelector('.mr-finding-name')?.textContent?.trim();
+  const sel = document.getElementById('mr-finding-select');
+  if (sel && name) Array.from(sel.options).forEach(o => { if (o.value === name) o.style.display = ''; });
+  row.remove();
+  const list = document.getElementById('mr-findings-list');
+  const empty = document.getElementById('mr-findings-empty');
+  if (empty && !list?.querySelector('.mr-finding-row')) empty.style.display = 'block';
+  // Fix border on first row
+  const first = list?.querySelector('.mr-finding-row');
+  if (first) first.style.borderTop = 'none';
 }
 
 function mrSwitchTab(tab) {
@@ -3751,33 +3802,14 @@ function mrUpdateFindingCount(row) {
   }
 }
 
-function mrApplyFindingVisibility() {
-  let anyHidden = false;
-  document.querySelectorAll('.mr-finding-row').forEach(row => {
-    const count = row.querySelectorAll('.mr-url-list input[type="checkbox"]:checked').length;
-    const cb = row.querySelector('input[type="checkbox"]');
-    const visible = count > 0 || cb?.checked;
-    row.style.display = visible ? '' : 'none';
-    if (!visible) anyHidden = true;
-  });
-  const showAllLink = document.getElementById('mr-show-all-findings');
-  if (showAllLink) showAllLink.style.display = anyHidden ? 'block' : 'none';
-}
-
-function mrShowAllFindings() {
-  document.querySelectorAll('.mr-finding-row').forEach(row => row.style.display = '');
-  const showAllLink = document.getElementById('mr-show-all-findings');
-  if (showAllLink) showAllLink.style.display = 'none';
-}
-
 function mrToggleFinding(header) {
   const body = header.nextElementSibling;
   const caret = header.querySelector('.mr-finding-caret');
-  const cb = header.querySelector('input[type="checkbox"]');
+  const name = header.querySelector('.mr-finding-name')?.textContent?.trim();
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'block';
   if (caret) caret.textContent = isOpen ? '▸' : '▾';
-  if (!isOpen) mrEnsureUrls(body.querySelector('.mr-url-list'), cb?.dataset.finding);
+  if (!isOpen) mrEnsureUrls(body.querySelector('.mr-url-list'), name);
 }
 
 // ---- Meeting Notes Tab ----
