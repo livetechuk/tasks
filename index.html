@@ -3520,6 +3520,7 @@ function renderMarketingReview() {
                     <div style="display:flex;align-items:center;gap:10px;padding:11px 14px">
                       <input type="checkbox" data-finding="${item}" onclick="mrFindingOuterClick(this,event)" style="width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--navy)">
                       <span style="font-size:13px;flex:1;cursor:pointer" onclick="mrToggleFinding(this.parentElement)">${item}</span>
+                      <span class="mr-count-badge" style="display:none;background:#e8f2e8;color:#2a6b2a;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;flex-shrink:0"></span>
                       <span class="mr-finding-caret" style="font-size:11px;color:#aaa;cursor:pointer" onclick="mrToggleFinding(this.parentElement)">▸</span>
                     </div>
                     <div class="mr-finding-body" style="display:none;padding:0 14px 12px 38px">
@@ -3527,6 +3528,7 @@ function renderMarketingReview() {
                     </div>
                   </div>`).join('')}
               </div>
+              <button id="mr-show-all-findings" onclick="mrShowAllFindings()" style="display:none;font-size:12px;color:#888;font-family:inherit;background:none;border:none;cursor:pointer;padding:4px 0 8px;text-decoration:underline;text-align:left">+ Show all findings</button>
               <div style="display:flex;gap:10px;align-items:center">
                 <button class="seo-btn" style="background:var(--navy)" onclick="mrSave()">Save Findings</button>
                 <div id="mr-msg" style="display:none;padding:8px 12px;border-radius:8px;font-size:13px;flex:1"></div>
@@ -3588,6 +3590,7 @@ async function mrLoadData() {
     const key = cb.dataset.finding;
     const saved = findingsData.find(f => (typeof f === 'string' ? f === key : f.name === key));
     cb.checked = !!saved;
+    row.style.display = '';
     if (saved?.urls?.length) {
       const body = row.querySelector('.mr-finding-body');
       const caret = row.querySelector('.mr-finding-caret');
@@ -3599,9 +3602,13 @@ async function mrLoadData() {
           const uc = urlList.querySelector(`input[data-url="${CSS.escape(u)}"]`);
           if (uc) uc.checked = true;
         });
+        mrUpdateFindingCount(row);
       });
+    } else {
+      mrUpdateFindingCount(row);
     }
   });
+  mrApplyFindingVisibility();
   const tbody = document.getElementById('mr-tbody');
   if (!tbody) return;
   if (scData.length === 0) {
@@ -3680,7 +3687,7 @@ function mrEnsureUrls(urlList, findingName, callback) {
   }
   urlList.innerHTML = _mrScDataCache.map(u =>
     `<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;cursor:pointer;border-bottom:0.5px solid #f5f5f3">
-      <input type="checkbox" data-url="${u.url}" style="margin-top:2px;flex-shrink:0;accent-color:var(--navy)">
+      <input type="checkbox" data-url="${u.url}" onchange="mrUpdateFindingCount(this.closest('.mr-finding-row'))" style="margin-top:2px;flex-shrink:0;accent-color:var(--navy)">
       <span style="font-family:monospace;font-size:11px;word-break:break-all;color:#0066cc;flex:1">${u.url}</span>
       <span style="color:#888;font-size:11px;white-space:nowrap">${u.clicks} clicks</span>
     </label>`
@@ -3700,9 +3707,11 @@ function mrFindingOuterClick(cb, event) {
     caret.textContent = '▾';
     mrEnsureUrls(urlList, cb.dataset.finding, () => {
       urlList.querySelectorAll('input[type="checkbox"]').forEach(u => u.checked = true);
+      mrUpdateFindingCount(row);
     });
   } else {
     urlList.querySelectorAll('input[type="checkbox"]').forEach(u => u.checked = false);
+    mrUpdateFindingCount(row);
   }
 }
 
@@ -3715,6 +3724,35 @@ function mrSwitchTab(tab) {
   document.getElementById('mr-tab-btn-performance').style.cssText = tab === 'performance'
     ? 'padding:8px 18px;font-size:13px;font-weight:600;font-family:inherit;border:none;background:var(--navy);color:#fff;cursor:pointer'
     : 'padding:8px 18px;font-size:13px;font-weight:500;font-family:inherit;border:none;background:none;color:#888;cursor:pointer';
+}
+
+function mrUpdateFindingCount(row) {
+  if (!row) return;
+  const count = row.querySelectorAll('.mr-url-list input[type="checkbox"]:checked').length;
+  const badge = row.querySelector('.mr-count-badge');
+  if (badge) {
+    badge.textContent = count + ' URL' + (count !== 1 ? 's' : '');
+    badge.style.display = count > 0 ? 'inline' : 'none';
+  }
+}
+
+function mrApplyFindingVisibility() {
+  let anyHidden = false;
+  document.querySelectorAll('.mr-finding-row').forEach(row => {
+    const count = row.querySelectorAll('.mr-url-list input[type="checkbox"]:checked').length;
+    const cb = row.querySelector('input[type="checkbox"]');
+    const visible = count > 0 || cb?.checked;
+    row.style.display = visible ? '' : 'none';
+    if (!visible) anyHidden = true;
+  });
+  const showAllLink = document.getElementById('mr-show-all-findings');
+  if (showAllLink) showAllLink.style.display = anyHidden ? 'block' : 'none';
+}
+
+function mrShowAllFindings() {
+  document.querySelectorAll('.mr-finding-row').forEach(row => row.style.display = '');
+  const showAllLink = document.getElementById('mr-show-all-findings');
+  if (showAllLink) showAllLink.style.display = 'none';
 }
 
 function mrToggleFinding(header) {
