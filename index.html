@@ -3438,8 +3438,8 @@ async function saveScSelections(month, clientId, selectedUrls) {
 // Load meeting note from Supabase
 async function loadMeetingNoteData(month, clientId) {
   try {
-    const email = currentUser.toLowerCase() + '@livetech.co.uk';
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/meeting_notes?month=eq.${month}&client_id=eq.${clientId}&assigned_to=eq.${email}&limit=1`, {
+    const email = _mnViewingEmail || currentUser.toLowerCase() + '@livetech.co.uk';
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/meeting_notes?month=eq.${month}&client_id=eq.${clientId}&assigned_to=eq.${encodeURIComponent(email)}&limit=1`, {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
     });
     const data = await res.json();
@@ -3508,22 +3508,12 @@ function renderMarketingReview() {
           </div>
           <div id="mr-loading" style="display:none;text-align:center;padding:20px;color:#888">Loading...</div>
           <div id="mr-dashboard" style="display:none">
-            <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden;margin-bottom:12px">
-              <table style="width:100%;border-collapse:collapse">
-                <thead>
-                  <tr style="background:#f9fafb">
-                    <th style="padding:10px 12px;text-align:left;font-size:12px;color:#888">URL</th>
-                    <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:80px">Clicks</th>
-                    <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:100px">Impressions</th>
-                    <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:90px">Avg Pos</th>
-                  </tr>
-                </thead>
-                <tbody id="mr-tbody"></tbody>
-              </table>
+            <div style="display:flex;gap:0;margin-bottom:12px;background:#fff;border:0.5px solid #e0ddd6;border-radius:10px;overflow:hidden;width:fit-content">
+              <button id="mr-tab-btn-findings" onclick="mrSwitchTab('findings')" style="padding:8px 18px;font-size:13px;font-weight:600;font-family:inherit;border:none;background:var(--navy);color:#fff;cursor:pointer">SC Findings</button>
+              <button id="mr-tab-btn-performance" onclick="mrSwitchTab('performance')" style="padding:8px 18px;font-size:13px;font-weight:500;font-family:inherit;border:none;background:none;color:#888;cursor:pointer">Performance</button>
             </div>
-            <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;padding:16px;margin-bottom:12px">
-              <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">SC Findings to highlight in meeting notes</div>
-              <div id="mr-findings" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px">
+            <div id="mr-tab-findings">
+              <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden;margin-bottom:12px">
                 ${[
                   'Crawled – currently not indexed',
                   'Discovered – currently not indexed',
@@ -3539,15 +3529,37 @@ function renderMarketingReview() {
                   'Core Web Vitals issue',
                   'Mobile usability issue',
                   'Low clicks / high impressions opportunity',
-                ].map(item => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0">
-                  <input type="checkbox" data-finding="${item}" style="width:15px;height:15px;cursor:pointer;accent-color:var(--navy)">
-                  <span>${item}</span>
-                </label>`).join('')}
+                ].map((item, i) => `
+                  <div class="mr-finding-row" style="${i>0?'border-top:0.5px solid #f0ede8':''}">
+                    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer" onclick="mrToggleFinding(this)">
+                      <input type="checkbox" data-finding="${item}" onclick="event.stopPropagation()" style="width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--navy)">
+                      <span style="font-size:13px;flex:1">${item}</span>
+                      <span class="mr-finding-caret" style="font-size:11px;color:#aaa">▸</span>
+                    </div>
+                    <div class="mr-finding-body" style="display:none;padding:0 14px 12px 38px">
+                      <textarea data-notes="${item}" placeholder="Add specific URLs or notes from GSC..." rows="3" style="width:100%;font-size:12px;font-family:monospace;border:0.5px solid #e0ddd6;border-radius:6px;padding:8px;resize:vertical;box-sizing:border-box;color:#444"></textarea>
+                    </div>
+                  </div>`).join('')}
+              </div>
+              <div style="display:flex;gap:10px;align-items:center">
+                <button class="seo-btn" style="background:var(--navy)" onclick="mrSave()">Save Findings</button>
+                <div id="mr-msg" style="display:none;padding:8px 12px;border-radius:8px;font-size:13px;flex:1"></div>
               </div>
             </div>
-            <div style="display:flex;gap:10px;align-items:center">
-              <button class="seo-btn" style="background:var(--navy)" onclick="mrSave()">Save Findings</button>
-              <div id="mr-msg" style="display:none;padding:8px 12px;border-radius:8px;font-size:13px;flex:1"></div>
+            <div id="mr-tab-performance" style="display:none">
+              <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead>
+                    <tr style="background:#f9fafb">
+                      <th style="padding:10px 12px;text-align:left;font-size:12px;color:#888">URL</th>
+                      <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:80px">Clicks</th>
+                      <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:100px">Impressions</th>
+                      <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:90px">Avg Pos</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mr-tbody"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -3579,9 +3591,23 @@ async function mrLoadData() {
   const selections = await loadScSelections(month, clientId);
   if (loading) loading.style.display = 'none';
   if (dash) dash.style.display = 'block';
-  // Restore finding checkboxes
-  document.querySelectorAll('#mr-findings input[type="checkbox"]').forEach(cb => {
-    cb.checked = Array.isArray(selections) && selections.includes(cb.dataset.finding);
+  // Restore findings: selections is [{name, notes}] or legacy string[]
+  const findingsData = Array.isArray(selections) ? selections : [];
+  document.querySelectorAll('.mr-finding-row').forEach(row => {
+    const cb = row.querySelector('input[type="checkbox"]');
+    const ta = row.querySelector('textarea');
+    if (!cb) return;
+    const key = cb.dataset.finding;
+    const saved = findingsData.find(f => (typeof f === 'string' ? f === key : f.name === key));
+    cb.checked = !!saved;
+    if (ta) ta.value = saved?.notes || '';
+    // Open the body if there are saved notes
+    if (saved?.notes) {
+      const body = row.querySelector('.mr-finding-body');
+      const caret = row.querySelector('.mr-finding-caret');
+      if (body) body.style.display = 'block';
+      if (caret) caret.textContent = '▾';
+    }
   });
   const tbody = document.getElementById('mr-tbody');
   if (!tbody) return;
@@ -3641,10 +3667,33 @@ async function mrSave() {
   if (!_mrCurrentClientId) return;
   const month = document.getElementById('mr-month')?.value;
   if (!month) return;
-  const checked = document.querySelectorAll('#mr-findings input[type="checkbox"]:checked');
-  const selectedFindings = Array.from(checked).map(cb => cb.dataset.finding);
-  await saveScSelections(month, _mrCurrentClientId, selectedFindings);
-  showSeoMsg('mr-msg', `Saved ${selectedFindings.length} finding${selectedFindings.length!==1?'s':''}.`, 'success');
+  const findings = [];
+  document.querySelectorAll('.mr-finding-row').forEach(row => {
+    const cb = row.querySelector('input[type="checkbox"]');
+    const ta = row.querySelector('textarea');
+    if (cb?.checked) findings.push({ name: cb.dataset.finding, notes: ta?.value?.trim() || '' });
+  });
+  await saveScSelections(month, _mrCurrentClientId, findings);
+  showSeoMsg('mr-msg', `Saved ${findings.length} finding${findings.length!==1?'s':''}.`, 'success');
+}
+
+function mrSwitchTab(tab) {
+  document.getElementById('mr-tab-findings').style.display = tab === 'findings' ? 'block' : 'none';
+  document.getElementById('mr-tab-performance').style.display = tab === 'performance' ? 'block' : 'none';
+  document.getElementById('mr-tab-btn-findings').style.cssText = tab === 'findings'
+    ? 'padding:8px 18px;font-size:13px;font-weight:600;font-family:inherit;border:none;background:var(--navy);color:#fff;cursor:pointer'
+    : 'padding:8px 18px;font-size:13px;font-weight:500;font-family:inherit;border:none;background:none;color:#888;cursor:pointer';
+  document.getElementById('mr-tab-btn-performance').style.cssText = tab === 'performance'
+    ? 'padding:8px 18px;font-size:13px;font-weight:600;font-family:inherit;border:none;background:var(--navy);color:#fff;cursor:pointer'
+    : 'padding:8px 18px;font-size:13px;font-weight:500;font-family:inherit;border:none;background:none;color:#888;cursor:pointer';
+}
+
+function mrToggleFinding(header) {
+  const body = header.nextElementSibling;
+  const caret = header.querySelector('.mr-finding-caret');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (caret) caret.textContent = isOpen ? '▸' : '▾';
 }
 
 // ---- Meeting Notes Tab ----
@@ -3667,6 +3716,7 @@ function renderMeetingNotes() {
           Select a client from the list to start your notes
         </div>
         <div id="mn-form" style="display:none">
+          <div id="mn-assignee-tabs" style="display:none;gap:0;margin-bottom:12px;background:#fff;border:0.5px solid #e0ddd6;border-radius:10px;overflow:hidden;width:fit-content"></div>
           <div class="mn-card">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
               <span id="mn-client-heading" style="font-size:16px;font-weight:600;color:var(--navy)"></span>
@@ -3753,7 +3803,7 @@ function renderMeetingNotes() {
 
             <div style="display:flex;gap:10px;margin-top:4px">
               <button class="seo-btn" style="background:#6b7280" onclick="mnExportPDF()">Export PDF</button>
-              <button class="seo-btn" onclick="mnSave()">Save</button>
+              <button class="seo-btn" id="mn-save-btn" onclick="mnSave()">Save</button>
             </div>
           </div>
         </div>
@@ -3761,6 +3811,8 @@ function renderMeetingNotes() {
     </div>
   </div>`;
 }
+
+let _mnViewingEmail = null;
 
 function mnSelectClient(id, name) {
   _mnCurrentClientId = id;
@@ -3770,7 +3822,50 @@ function mnSelectClient(id, name) {
   if (document.getElementById('mn-no-client')) document.getElementById('mn-no-client').style.display = 'none';
   if (document.getElementById('mn-form')) document.getElementById('mn-form').style.display = 'block';
   if (document.getElementById('mn-client-heading')) document.getElementById('mn-client-heading').textContent = name;
+  if (currentUser === SEO_MARKETING_HEAD) {
+    mnShowAssigneeTabs();
+  } else {
+    _mnViewingEmail = currentUser.toLowerCase() + '@livetech.co.uk';
+    const tabsEl = document.getElementById('mn-assignee-tabs');
+    if (tabsEl) tabsEl.style.display = 'none';
+    mnSetReadOnly(false);
+    mnLoad();
+  }
+}
+
+function mnShowAssigneeTabs() {
+  const tabsEl = document.getElementById('mn-assignee-tabs');
+  if (!tabsEl) return;
+  const members = SEO_MARKETING_TEAM.filter(m => m !== SEO_MARKETING_HEAD);
+  tabsEl.innerHTML = members.map((m, i) => {
+    const email = m.toLowerCase() + '@livetech.co.uk';
+    const isFirst = i === 0;
+    return `<button class="mn-assignee-tab-btn" data-email="${email}" onclick="mnSwitchAssignee('${email}', this)"
+      style="padding:8px 16px;font-size:13px;font-family:inherit;border:none;cursor:pointer;${isFirst?'background:var(--navy);color:#fff;font-weight:600':'background:none;color:#888;font-weight:500'}">${m}</button>`;
+  }).join('');
+  tabsEl.style.display = 'flex';
+  // Load first member
+  const firstEmail = members[0].toLowerCase() + '@livetech.co.uk';
+  mnSwitchAssignee(firstEmail, tabsEl.querySelector('.mn-assignee-tab-btn'));
+}
+
+function mnSwitchAssignee(email, btn) {
+  _mnViewingEmail = email;
+  document.querySelectorAll('.mn-assignee-tab-btn').forEach(b => {
+    b.style.cssText = 'padding:8px 16px;font-size:13px;font-family:inherit;border:none;cursor:pointer;background:none;color:#888;font-weight:500';
+  });
+  if (btn) btn.style.cssText = 'padding:8px 16px;font-size:13px;font-family:inherit;border:none;cursor:pointer;background:var(--navy);color:#fff;font-weight:600';
+  mnSetReadOnly(true); // Sarah always views others' notes read-only
   mnLoad();
+}
+
+function mnSetReadOnly(readOnly) {
+  document.querySelectorAll('#mn-form input:not([type=file]):not([type=radio]), #mn-form textarea, #mn-form select').forEach(el => {
+    if (el.id !== 'mn-month') el.disabled = readOnly;
+  });
+  document.querySelectorAll('#mn-form input[type=radio]').forEach(el => el.disabled = readOnly);
+  const saveBtn = document.getElementById('mn-save-btn');
+  if (saveBtn) saveBtn.style.display = readOnly ? 'none' : '';
 }
 
 function mnMonthChange() {
