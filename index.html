@@ -3489,6 +3489,7 @@ const SC_FINDINGS = [
 let _mrCurrentClientId = null;
 let _mrCurrentClientName = null;
 let _mrScDataCache = [];
+let _mrPerformanceCache = null;
 let _mnCurrentClientId = null;
 let _mnCurrentClientName = null;
 
@@ -3516,7 +3517,7 @@ function renderMarketingReview() {
                 <input type="text" id="mr-gsc-property" placeholder="https://example.com/" oninput="mrSaveGscProperty()"
                   style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:210px;color:#555">
                 <label style="font-size:12px;color:#888;font-weight:600">Month</label>
-                <select id="mr-month" onchange="mrLoadData()" class="seo-select">${getSeoMonthOptions()}</select>
+                <select id="mr-month" onchange="_mrPerformanceCache=null;mrLoadData()" class="seo-select">${getSeoMonthOptions()}</select>
                 <button class="seo-btn" onclick="mrRefresh()" id="mr-refresh-btn" style="white-space:nowrap">Refresh SC Data</button>
               </div>
             </div>
@@ -3544,19 +3545,57 @@ function renderMarketingReview() {
               </div>
             </div>
             <div id="mr-tab-performance" style="display:none">
-              <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden">
-                <table style="width:100%;border-collapse:collapse">
-                  <thead>
-                    <tr style="background:#f9fafb">
-                      <th style="padding:10px 12px;text-align:left;font-size:12px;color:#888">URL</th>
-                      <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:80px">Clicks</th>
-                      <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:100px">Impressions</th>
-                      <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:90px">Avg Pos</th>
-                    </tr>
-                  </thead>
-                  <tbody id="mr-tbody"></tbody>
-                </table>
+              <div id="mr-perf-loading" style="display:none;text-align:center;padding:32px;color:#888;font-size:13px">Loading performance data...</div>
+              <div id="mr-perf-content" style="display:none">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+                  <div style="background:var(--navy);border-radius:12px;padding:20px 22px">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Total Clicks</div>
+                    <div id="mr-perf-clicks" style="font-size:28px;font-weight:700;color:#ff8c42;font-family:inherit">—</div>
+                  </div>
+                  <div style="background:var(--navy);border-radius:12px;padding:20px 22px">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Total Impressions</div>
+                    <div id="mr-perf-impressions" style="font-size:28px;font-weight:700;color:#ff8c42;font-family:inherit">—</div>
+                  </div>
+                  <div style="background:var(--navy);border-radius:12px;padding:20px 22px">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Avg CTR</div>
+                    <div id="mr-perf-ctr" style="font-size:28px;font-weight:700;color:#ff8c42;font-family:inherit">—</div>
+                  </div>
+                </div>
+                <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden;margin-bottom:20px">
+                  <div style="padding:14px 16px;border-bottom:0.5px solid #e0ddd6">
+                    <span id="mr-perf-client-heading" style="font-size:14px;font-weight:600;color:var(--navy)"></span>
+                    <span style="font-size:13px;color:#888"> — Top Queries</span>
+                  </div>
+                  <table style="width:100%;border-collapse:collapse">
+                    <thead>
+                      <tr style="background:#f9fafb">
+                        <th style="padding:10px 12px;text-align:left;font-size:12px;color:#888">Query</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:80px">Clicks</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:100px">Impressions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="mr-queries-tbody"></tbody>
+                  </table>
+                </div>
+                <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden">
+                  <div style="padding:14px 16px;border-bottom:0.5px solid #e0ddd6">
+                    <span style="font-size:14px;font-weight:600;color:var(--navy)">Top URLs</span>
+                    <span style="font-size:13px;color:#888"> — highest impressions</span>
+                  </div>
+                  <table style="width:100%;border-collapse:collapse">
+                    <thead>
+                      <tr style="background:#f9fafb">
+                        <th style="padding:10px 12px;text-align:left;font-size:12px;color:#888">URL</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:80px">Clicks</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:100px">Impressions</th>
+                        <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:90px">Avg Pos</th>
+                      </tr>
+                    </thead>
+                    <tbody id="mr-tbody"></tbody>
+                  </table>
+                </div>
               </div>
+              <div id="mr-perf-empty" style="display:block;text-align:center;padding:32px;color:#aaa;font-size:13px">Select a client and click Refresh SC Data to load performance.</div>
             </div>
           </div>
         </div>
@@ -3568,6 +3607,7 @@ function renderMarketingReview() {
 function mrSelectClient(id, name) {
   _mrCurrentClientId = id;
   _mrCurrentClientName = name;
+  _mrPerformanceCache = null;
   document.querySelectorAll('.mr-client-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`#mr-client-list .mr-client-btn[data-id="${id}"]`)?.classList.add('active');
   if (document.getElementById('mr-no-client')) document.getElementById('mr-no-client').style.display = 'none';
@@ -3609,17 +3649,19 @@ async function mrLoadData() {
     if (name) mrAddFinding(name, count, urls);
   });
   const tbody = document.getElementById('mr-tbody');
-  if (!tbody) return;
-  if (scData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;font-size:13px">No data yet. Click Refresh SC Data to pull from BigQuery.</td></tr>';
-  } else {
-    tbody.innerHTML = scData.map(row => `
-      <tr style="border-top:0.5px solid #f0ede8">
-        <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#0066cc">${row.url}</td>
-        <td style="padding:10px 12px;text-align:right;font-size:13px">${row.clicks}</td>
-        <td style="padding:10px 12px;text-align:right;font-size:13px">${row.impressions}</td>
-        <td style="padding:10px 12px;text-align:right;font-size:13px">${Number(row.avg_position).toFixed(1)}</td>
-      </tr>`).join('');
+  if (tbody) {
+    if (scData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;font-size:13px">No data yet. Click Refresh SC Data to pull from BigQuery.</td></tr>';
+    } else {
+      const top3 = [...scData].sort((a, b) => (parseInt(b.clicks) || 0) - (parseInt(a.clicks) || 0)).slice(0, 3);
+      tbody.innerHTML = top3.map(row => `
+        <tr style="border-top:0.5px solid #f0ede8">
+          <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#0066cc">${row.url}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${row.clicks}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${row.impressions}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${Number(row.avg_position).toFixed(1)}</td>
+        </tr>`).join('');
+    }
   }
 }
 
@@ -3855,6 +3897,98 @@ function mrSwitchTab(tab) {
   document.getElementById('mr-tab-btn-performance').style.cssText = tab === 'performance'
     ? 'padding:8px 18px;font-size:13px;font-weight:600;font-family:inherit;border:none;background:var(--navy);color:#fff;cursor:pointer'
     : 'padding:8px 18px;font-size:13px;font-weight:500;font-family:inherit;border:none;background:none;color:#888;cursor:pointer';
+  if (tab === 'performance') mrLoadPerformanceData();
+}
+
+function mrFormatNum(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+
+async function mrLoadPerformanceData() {
+  if (!_mrCurrentClientId) return;
+  if (_mrPerformanceCache) { mrRenderPerformance(_mrPerformanceCache); return; }
+  const month = document.getElementById('mr-month')?.value;
+  if (!month) return;
+  const perfLoading = document.getElementById('mr-perf-loading');
+  const perfContent = document.getElementById('mr-perf-content');
+  const perfEmpty = document.getElementById('mr-perf-empty');
+  if (perfLoading) perfLoading.style.display = 'block';
+  if (perfContent) perfContent.style.display = 'none';
+  if (perfEmpty) perfEmpty.style.display = 'none';
+  const clientId = _mrCurrentClientId;
+  const client = (_makeClientsCache || MAKE_CLIENTS_FALLBACK).find(c => c.id === clientId);
+  const bqDataset = client?.bq_dataset || clientId;
+  const [mm, yyyy] = month.split('-');
+  const fromDate = `${yyyy}-${mm}-01`;
+  const lastDay = new Date(parseInt(yyyy), parseInt(mm), 0).getDate();
+  const toDate = `${yyyy}-${mm}-${String(lastDay).padStart(2,'0')}`;
+  const baseFrom = `FROM \`livetech-website.${bqDataset}.searchdata_url_impression\` WHERE data_date >= '${fromDate}' AND data_date <= '${toDate}' AND search_type = 'WEB'`;
+  const statsSQL = `SELECT SUM(clicks) as total_clicks, SUM(impressions) as total_impressions, ROUND(SAFE_DIVIDE(SUM(clicks), SUM(impressions)) * 100, 2) as avg_ctr ${baseFrom}`;
+  const queriesSQL = `SELECT query, SUM(clicks) as clicks, SUM(impressions) as impressions ${baseFrom} AND is_anonymized_query = false GROUP BY query ORDER BY clicks DESC LIMIT 10`;
+  try {
+    const [statsRes, queriesRes] = await Promise.all([
+      fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/bigquery', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: 'livetech-website', region: 'europe-west2', query: statsSQL })
+      }),
+      fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/bigquery', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: 'livetech-website', region: 'europe-west2', query: queriesSQL })
+      })
+    ]);
+    const [statsData, queriesData] = await Promise.all([statsRes.json(), queriesRes.json()]);
+    const sRow = (statsData.rows || [])[0];
+    const stats = sRow?.f
+      ? { total_clicks: parseInt(sRow.f[0].v) || 0, total_impressions: parseInt(sRow.f[1].v) || 0, avg_ctr: parseFloat(sRow.f[2].v) || 0 }
+      : (sRow || { total_clicks: 0, total_impressions: 0, avg_ctr: 0 });
+    const queries = (queriesData.rows || []).map(r => r.f
+      ? { query: r.f[0].v, clicks: parseInt(r.f[1].v) || 0, impressions: parseInt(r.f[2].v) || 0 }
+      : r
+    );
+    _mrPerformanceCache = { stats, queries };
+    mrRenderPerformance(_mrPerformanceCache);
+  } catch(e) {
+    console.error('mrLoadPerformanceData error:', e);
+    if (perfLoading) perfLoading.style.display = 'none';
+    if (perfEmpty) { perfEmpty.style.display = 'block'; perfEmpty.textContent = 'Error loading performance data: ' + e.message; }
+  }
+}
+
+function mrRenderPerformance({ stats, queries }) {
+  const perfLoading = document.getElementById('mr-perf-loading');
+  const perfContent = document.getElementById('mr-perf-content');
+  const perfEmpty = document.getElementById('mr-perf-empty');
+  if (perfLoading) perfLoading.style.display = 'none';
+  if (stats.total_impressions === 0 && stats.total_clicks === 0) {
+    if (perfEmpty) { perfEmpty.style.display = 'block'; perfEmpty.textContent = 'No performance data found for this period. Click Refresh SC Data to pull from BigQuery.'; }
+    return;
+  }
+  if (perfContent) perfContent.style.display = 'block';
+  if (perfEmpty) perfEmpty.style.display = 'none';
+  const clicks = document.getElementById('mr-perf-clicks');
+  const impressions = document.getElementById('mr-perf-impressions');
+  const ctr = document.getElementById('mr-perf-ctr');
+  if (clicks) clicks.textContent = mrFormatNum(stats.total_clicks);
+  if (impressions) impressions.textContent = mrFormatNum(stats.total_impressions);
+  if (ctr) ctr.textContent = stats.avg_ctr != null ? stats.avg_ctr.toFixed(2) + '%' : '—';
+  const heading = document.getElementById('mr-perf-client-heading');
+  if (heading) heading.textContent = _mrCurrentClientName || '';
+  const qtbody = document.getElementById('mr-queries-tbody');
+  if (qtbody) {
+    if (!queries.length) {
+      qtbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:16px;color:#aaa;font-size:13px">No query data available.</td></tr>';
+    } else {
+      qtbody.innerHTML = queries.map(q => `
+        <tr style="border-top:0.5px solid #f0ede8">
+          <td style="padding:10px 12px;font-size:13px;color:#333">${q.query}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${mrFormatNum(q.clicks)}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:13px">${mrFormatNum(q.impressions)}</td>
+        </tr>`).join('');
+    }
+  }
 }
 
 // Render a fixed list of specific URLs (from GSC inspection), all pre-checked
