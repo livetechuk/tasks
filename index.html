@@ -3493,11 +3493,10 @@ function renderMarketingReview() {
           </div>
           <div id="mr-loading" style="display:none;text-align:center;padding:20px;color:#888">Loading...</div>
           <div id="mr-dashboard" style="display:none">
-            <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden">
+            <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;overflow:hidden;margin-bottom:12px">
               <table style="width:100%;border-collapse:collapse">
                 <thead>
                   <tr style="background:#f9fafb">
-                    <th style="padding:10px 12px;text-align:left;width:30px;font-size:12px;color:#888"></th>
                     <th style="padding:10px 12px;text-align:left;font-size:12px;color:#888">URL</th>
                     <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:80px">Clicks</th>
                     <th style="padding:10px 12px;text-align:right;font-size:12px;color:#888;width:100px">Impressions</th>
@@ -3507,8 +3506,32 @@ function renderMarketingReview() {
                 <tbody id="mr-tbody"></tbody>
               </table>
             </div>
-            <div style="display:flex;gap:10px;margin-top:12px;align-items:center">
-              <button class="seo-btn" style="background:var(--navy)" onclick="mrSave()">Save Selections</button>
+            <div style="background:#fff;border:0.5px solid #e0ddd6;border-radius:12px;padding:16px;margin-bottom:12px">
+              <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">SC Findings to highlight in meeting notes</div>
+              <div id="mr-findings" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px">
+                ${[
+                  'Crawled – currently not indexed',
+                  'Discovered – currently not indexed',
+                  'Page with redirect',
+                  'Not found (404)',
+                  'Blocked due to other 4xx issue',
+                  'Alternative page with proper canonical tag',
+                  'Excluded by noindex tag',
+                  'Blocked due to access forbidden (403)',
+                  'Server error (5xx)',
+                  'Duplicate without user-selected canonical',
+                  'Soft 404',
+                  'Core Web Vitals issue',
+                  'Mobile usability issue',
+                  'Low clicks / high impressions opportunity',
+                ].map(item => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0">
+                  <input type="checkbox" data-finding="${item}" style="width:15px;height:15px;cursor:pointer;accent-color:var(--navy)">
+                  <span>${item}</span>
+                </label>`).join('')}
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button class="seo-btn" style="background:var(--navy)" onclick="mrSave()">Save Findings</button>
               <div id="mr-msg" style="display:none;padding:8px 12px;border-radius:8px;font-size:13px;flex:1"></div>
             </div>
           </div>
@@ -3541,14 +3564,17 @@ async function mrLoadData() {
   const selections = await loadScSelections(month, clientId);
   if (loading) loading.style.display = 'none';
   if (dash) dash.style.display = 'block';
+  // Restore finding checkboxes
+  document.querySelectorAll('#mr-findings input[type="checkbox"]').forEach(cb => {
+    cb.checked = Array.isArray(selections) && selections.includes(cb.dataset.finding);
+  });
   const tbody = document.getElementById('mr-tbody');
   if (!tbody) return;
   if (scData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#aaa;font-size:13px">No data yet. Click Refresh SC Data to pull from BigQuery.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;font-size:13px">No data yet. Click Refresh SC Data to pull from BigQuery.</td></tr>';
   } else {
     tbody.innerHTML = scData.map(row => `
       <tr style="border-top:0.5px solid #f0ede8">
-        <td style="padding:10px 12px;text-align:center"><input type="checkbox" ${selections.includes(row.url)?'checked':''} data-url="${row.url}" style="width:16px;height:16px;cursor:pointer"></td>
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#0066cc">${row.url}</td>
         <td style="padding:10px 12px;text-align:right;font-size:13px">${row.clicks}</td>
         <td style="padding:10px 12px;text-align:right;font-size:13px">${row.impressions}</td>
@@ -3600,10 +3626,10 @@ async function mrSave() {
   if (!_mrCurrentClientId) return;
   const month = document.getElementById('mr-month')?.value;
   if (!month) return;
-  const checked = document.querySelectorAll('#mr-tbody input[type="checkbox"]:checked');
-  const selectedUrls = Array.from(checked).map(cb => cb.dataset.url);
-  await saveScSelections(month, _mrCurrentClientId, selectedUrls);
-  showSeoMsg('mr-msg', `Saved ${selectedUrls.length} URL${selectedUrls.length!==1?'s':''}.`, 'success');
+  const checked = document.querySelectorAll('#mr-findings input[type="checkbox"]:checked');
+  const selectedFindings = Array.from(checked).map(cb => cb.dataset.finding);
+  await saveScSelections(month, _mrCurrentClientId, selectedFindings);
+  showSeoMsg('mr-msg', `Saved ${selectedFindings.length} finding${selectedFindings.length!==1?'s':''}.`, 'success');
 }
 
 // ---- Meeting Notes Tab ----
