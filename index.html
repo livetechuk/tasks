@@ -3666,29 +3666,40 @@ async function mrRefresh() {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ siteUrl: gscProperty, urls: rows.map(r => r.url) })
         });
-        if (inspectRes.ok) {
-          const inspected = await inspectRes.json();
+        const rawText = await inspectRes.text();
+        console.log('GSC inspect HTTP status:', inspectRes.status);
+        console.log('GSC inspect raw response:', rawText);
+        if (!inspectRes.ok) {
+          showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspect HTTP error ${inspectRes.status}: ${rawText.slice(0,200)}`, 'error');
+        } else {
+          let inspected;
+          try { inspected = JSON.parse(rawText); } catch(e) { inspected = []; }
+          console.log('GSC inspected URLs breakdown:', inspected.map(i => ({ url: i.url, coverageState: i.coverageState, verdict: i.verdict, error: i.error })));
+          const errors = inspected.filter(i => i.error);
+          const ok = inspected.filter(i => !i.error);
           const findingGroups = {};
-          inspected.forEach(item => {
-            if (item.error || !item.coverageState) return;
+          ok.forEach(item => {
+            if (!item.coverageState) return;
             const finding = mrMapCoverageState(item.coverageState);
-            if (!finding) return; // indexed, skip
+            if (!finding) return;
             if (!findingGroups[finding]) findingGroups[finding] = [];
             findingGroups[finding].push(item.url);
           });
           const autoFindings = Object.entries(findingGroups).map(([name, urls]) => ({ name, count: null, urls }));
           if (autoFindings.length) {
             await saveScSelections(month, clientId, autoFindings);
-            showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) across ${inspected.filter(i=>!i.error).length} URLs.`, 'success');
+            showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) across ${ok.length} URLs inspected.`, 'success');
+          } else if (errors.length === inspected.length && inspected.length > 0) {
+            showSeoMsg('mr-msg', `GSC inspection: all ${errors.length} URL checks failed (error ${errors[0]?.error}). Check service account has Full access to this GSC property.`, 'error');
+          } else if (ok.length === 0) {
+            showSeoMsg('mr-msg', `GSC inspection returned no results — sitemap may not be found. Check console for details.`, 'error');
           } else {
-            showSeoMsg('mr-msg', `Synced ${records.length} URLs. No coverage issues detected.`, 'success');
+            showSeoMsg('mr-msg', `Synced ${records.length} URLs. Inspected ${ok.length} pages — all indexed, no issues in this sample.`, 'info');
           }
-        } else {
-          showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspection failed — check service account access.`, 'info');
         }
       } catch(e) {
         console.warn('GSC inspect error:', e);
-        showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspection error: ${e.message}`, 'info');
+        showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspection error: ${e.message}`, 'error');
       }
     } else {
       showSeoMsg('mr-msg', `Synced ${records.length} URLs. Add a GSC Property URL above to auto-generate findings.`, 'info');
