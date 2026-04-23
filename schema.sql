@@ -59,6 +59,9 @@ CREATE TABLE IF NOT EXISTS meeting_notes (
   upselling TEXT DEFAULT '',
   competitors TEXT DEFAULT '',
   comments TEXT DEFAULT '',
+  meeting_date TEXT DEFAULT '',
+  planned_work TEXT DEFAULT '',
+  wp_health TEXT DEFAULT '',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(month, client_id, assigned_to)
@@ -88,3 +91,13 @@ CREATE OR REPLACE FUNCTION update_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.u
 
 CREATE TRIGGER update_meeting_notes_updated_at BEFORE UPDATE ON meeting_notes FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_sc_selections_updated_at BEFORE UPDATE ON sc_selections FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================================
+-- Migrations (run if tables already exist)
+-- ============================================================================
+ALTER TABLE meeting_notes ADD COLUMN IF NOT EXISTS meeting_date TEXT DEFAULT '';
+ALTER TABLE meeting_notes ADD COLUMN IF NOT EXISTS planned_work TEXT DEFAULT '';
+ALTER TABLE meeting_notes ADD COLUMN IF NOT EXISTS wp_health TEXT DEFAULT '';
+
+-- Supabase Storage: create a bucket named 'meeting-notes' with public access
+-- for screenshot and site health file uploads.
