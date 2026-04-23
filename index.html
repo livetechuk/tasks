@@ -3462,6 +3462,7 @@ async function loadScSelections(month, clientId) {
 // ---- Marketing Review Tab (Sarah only) ----
 let _mrCurrentClientId = null;
 let _mrCurrentClientName = null;
+let _mrScDataCache = [];
 let _mnCurrentClientId = null;
 let _mnCurrentClientName = null;
 
@@ -3516,13 +3517,13 @@ function renderMarketingReview() {
                   'Low clicks / high impressions opportunity',
                 ].map((item, i) => `
                   <div class="mr-finding-row" style="${i>0?'border-top:0.5px solid #f0ede8':''}">
-                    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer" onclick="mrToggleFinding(this)">
-                      <input type="checkbox" data-finding="${item}" onclick="event.stopPropagation()" style="width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--navy)">
-                      <span style="font-size:13px;flex:1">${item}</span>
-                      <span class="mr-finding-caret" style="font-size:11px;color:#aaa">▸</span>
+                    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px">
+                      <input type="checkbox" data-finding="${item}" onclick="mrFindingOuterClick(this,event)" style="width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--navy)">
+                      <span style="font-size:13px;flex:1;cursor:pointer" onclick="mrToggleFinding(this.parentElement)">${item}</span>
+                      <span class="mr-finding-caret" style="font-size:11px;color:#aaa;cursor:pointer" onclick="mrToggleFinding(this.parentElement)">▸</span>
                     </div>
                     <div class="mr-finding-body" style="display:none;padding:0 14px 12px 38px">
-                      <textarea data-notes="${item}" placeholder="Add specific URLs or notes from GSC..." rows="3" style="width:100%;font-size:12px;font-family:monospace;border:0.5px solid #e0ddd6;border-radius:6px;padding:8px;resize:vertical;box-sizing:border-box;color:#444"></textarea>
+                      <div class="mr-url-list" style="max-height:220px;overflow-y:auto;font-size:12px"></div>
                     </div>
                   </div>`).join('')}
               </div>
@@ -3574,24 +3575,31 @@ async function mrLoadData() {
   if (loading) loading.style.display = 'block';
   const scData = await loadScData(clientId, month);
   const selections = await loadScSelections(month, clientId);
+  _mrScDataCache = scData;
+  // Reset lazy-loaded URL lists so they refresh with new data
+  document.querySelectorAll('.mr-url-list').forEach(ul => { ul.innerHTML = ''; delete ul.dataset.loaded; });
   if (loading) loading.style.display = 'none';
   if (dash) dash.style.display = 'block';
-  // Restore findings: selections is [{name, notes}] or legacy string[]
+  // Restore findings: selections is [{name, urls}] or legacy string[]
   const findingsData = Array.isArray(selections) ? selections : [];
   document.querySelectorAll('.mr-finding-row').forEach(row => {
     const cb = row.querySelector('input[type="checkbox"]');
-    const ta = row.querySelector('textarea');
     if (!cb) return;
     const key = cb.dataset.finding;
     const saved = findingsData.find(f => (typeof f === 'string' ? f === key : f.name === key));
     cb.checked = !!saved;
-    if (ta) ta.value = saved?.notes || '';
-    // Open the body if there are saved notes
-    if (saved?.notes) {
+    if (saved?.urls?.length) {
       const body = row.querySelector('.mr-finding-body');
       const caret = row.querySelector('.mr-finding-caret');
-      if (body) body.style.display = 'block';
+      if (body) { body.style.display = 'block'; }
       if (caret) caret.textContent = '▾';
+      const urlList = body?.querySelector('.mr-url-list');
+      if (urlList) mrEnsureUrls(urlList, key, () => {
+        saved.urls.forEach(u => {
+          const uc = urlList.querySelector(`input[data-url="${CSS.escape(u)}"]`);
+          if (uc) uc.checked = true;
+        });
+      });
     }
   });
   const tbody = document.getElementById('mr-tbody');
@@ -3654,12 +3662,48 @@ async function mrSave() {
   if (!month) return;
   const findings = [];
   document.querySelectorAll('.mr-finding-row').forEach(row => {
-    const cb = row.querySelector('input[type="checkbox"]');
-    const ta = row.querySelector('textarea');
-    if (cb?.checked) findings.push({ name: cb.dataset.finding, notes: ta?.value?.trim() || '' });
+    const cb = row.querySelector(':scope > div > input[type="checkbox"]');
+    const selectedUrls = Array.from(row.querySelectorAll('.mr-url-list input[type="checkbox"]:checked')).map(u => u.dataset.url);
+    if (cb?.checked || selectedUrls.length > 0) {
+      findings.push({ name: cb?.dataset.finding, urls: selectedUrls });
+    }
   });
   await saveScSelections(month, _mrCurrentClientId, findings);
   showSeoMsg('mr-msg', `Saved ${findings.length} finding${findings.length!==1?'s':''}.`, 'success');
+}
+
+function mrEnsureUrls(urlList, findingName, callback) {
+  if (urlList.dataset.loaded) { if (callback) callback(); return; }
+  if (!_mrScDataCache?.length) {
+    urlList.innerHTML = '<p style="color:#aaa;font-size:12px;padding:4px 0">No SC data yet — click Refresh SC Data first.</p>';
+    return;
+  }
+  urlList.innerHTML = _mrScDataCache.map(u =>
+    `<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;cursor:pointer;border-bottom:0.5px solid #f5f5f3">
+      <input type="checkbox" data-url="${u.url}" style="margin-top:2px;flex-shrink:0;accent-color:var(--navy)">
+      <span style="font-family:monospace;font-size:11px;word-break:break-all;color:#0066cc;flex:1">${u.url}</span>
+      <span style="color:#888;font-size:11px;white-space:nowrap">${u.clicks} clicks</span>
+    </label>`
+  ).join('');
+  urlList.dataset.loaded = '1';
+  if (callback) callback();
+}
+
+function mrFindingOuterClick(cb, event) {
+  event.stopPropagation();
+  const row = cb.closest('.mr-finding-row');
+  const body = row.querySelector('.mr-finding-body');
+  const caret = row.querySelector('.mr-finding-caret');
+  const urlList = body.querySelector('.mr-url-list');
+  if (cb.checked) {
+    body.style.display = 'block';
+    caret.textContent = '▾';
+    mrEnsureUrls(urlList, cb.dataset.finding, () => {
+      urlList.querySelectorAll('input[type="checkbox"]').forEach(u => u.checked = true);
+    });
+  } else {
+    urlList.querySelectorAll('input[type="checkbox"]').forEach(u => u.checked = false);
+  }
 }
 
 function mrSwitchTab(tab) {
@@ -3676,9 +3720,11 @@ function mrSwitchTab(tab) {
 function mrToggleFinding(header) {
   const body = header.nextElementSibling;
   const caret = header.querySelector('.mr-finding-caret');
+  const cb = header.querySelector('input[type="checkbox"]');
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'block';
   if (caret) caret.textContent = isOpen ? '▸' : '▾';
+  if (!isOpen) mrEnsureUrls(body.querySelector('.mr-url-list'), cb?.dataset.finding);
 }
 
 // ---- Meeting Notes Tab ----
@@ -3892,13 +3938,15 @@ async function mnLoad() {
     if (note.screenshots) mnRenderFileList('mn-screenshots-list', note.screenshots);
     if (note.wp_health)   mnRenderFileList('mn-wphealth-list',   note.wp_health);
   }
-  // Auto-populate SC tasks from Sarah's selections
+  // Auto-populate SC tasks from Sarah's findings selections
   const selections = await loadScSelections(month, clientId);
-  if (selections.length > 0) {
-    const scData = await loadScData(clientId, month);
-    const relevant = scData.filter(r => selections.includes(r.url));
-    if (relevant.length > 0 && scDiv)
-      scDiv.innerHTML = relevant.map(r => `&bull; <code style="font-size:12px">${r.url}</code> &mdash; ${r.clicks} clicks`).join('<br>');
+  if (selections.length > 0 && scDiv) {
+    const lines = selections.map(s => {
+      const name = typeof s === 'string' ? s : s.name;
+      const urls = s.urls?.length ? s.urls.map(u => `<br>&nbsp;&nbsp;&bull; <code style="font-size:11px">${u}</code>`).join('') : '';
+      return `<strong>${name}</strong>${urls}`;
+    });
+    scDiv.innerHTML = lines.join('<br><br>');
   }
 }
 
