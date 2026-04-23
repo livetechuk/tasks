@@ -4612,13 +4612,31 @@ async function loadMakeClientsIntoDropdown() {
   let clients = _makeClientsCache;
   if (!clients) {
     try {
+      // Auto-discover correct data store ID by listing all data stores
+      const dsListRes = await fetch(
+        CLAUDE_PROXY.replace(/\/$/, '') + `/make/data-stores?teamId=583475`
+      );
+      let dataStoreId = null;
+      if (dsListRes.ok) {
+        const dsData = await dsListRes.json();
+        const dsList = dsData.dataStores || dsData.data || dsData.records || (Array.isArray(dsData) ? dsData : []);
+        console.log('[Make] data stores:', JSON.stringify(dsList.map(d => ({ id: d.id, name: d.name }))));
+        // Prefer one whose name contains "client" (case-insensitive), else take first
+        const preferred = dsList.find(d => d.name && /client/i.test(d.name)) || dsList[0];
+        if (preferred) dataStoreId = preferred.id;
+      }
+      if (!dataStoreId) {
+        console.warn('[Make] could not discover data store, trying known ID 157873');
+        dataStoreId = 157873;
+      }
+
       const allRecords = [];
       let offset = 0;
       const limit = 100;
       while (true) {
         const res = await fetch(
           CLAUDE_PROXY.replace(/\/$/, '') +
-          `/make/data-stores/157873/data-store-records?teamId=583475&limit=${limit}&offset=${offset}`
+          `/make/data-stores/${dataStoreId}/data-store-records?teamId=583475&limit=${limit}&offset=${offset}`
         );
         if (!res.ok) {
           const errBody = await res.text();
@@ -4654,7 +4672,7 @@ async function loadMakeClientsIntoDropdown() {
       if (!mapped.length) throw new Error('no valid records after mapping');
       clients = mapped;
       _makeClientsCache = clients;
-      console.log('[Make] loaded', clients.length, 'clients');
+      console.log('[Make] loaded', clients.length, 'clients from data store', dataStoreId);
     } catch(e) {
       console.warn('[Make] falling back to hardcoded list:', e.message);
       clients = MAKE_CLIENTS_FALLBACK.map(c => ({ ...c }));
