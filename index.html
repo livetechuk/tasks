@@ -4641,7 +4641,14 @@ async function loadMakeClientsIntoDropdown() {
           const name = v.name || v.client_name || v['Client Name'] || v['Name'] || v.title || v.label
             || Object.values(v).find(val => typeof val === 'string' && val !== bq && !val.startsWith('http') && val.length > 1 && val.length < 60)
             || r.key || bq;
-          const assignee = v.assignee || v.Assignee || v.assigned_to || '';
+          // Try every plausible field name the Make.com datastore might use for assignee
+          let assignee = v.assignee || v.Assignee || v.assigned_to || v.assigned || v.owner
+            || v.user || v.team_member || v['Assigned To'] || v['assigned_to'] || v['User'] || '';
+          // If still empty, fall back to the hardcoded mapping keyed by bq_dataset
+          if (!assignee && bq) {
+            const fb = MAKE_CLIENTS_FALLBACK.find(f => f.bq_dataset === bq);
+            assignee = fb?.assignee || '';
+          }
           return { id: bq || r.key, name, bq_dataset: bq, assignee, drive_folder_id: v.drive_folder_id || '' };
         }).filter(c => c.id);
         if (mapped.length) {
@@ -4651,7 +4658,7 @@ async function loadMakeClientsIntoDropdown() {
       } else throw new Error('empty response');
     } catch(e) {
       console.warn('[Make] falling back to hardcoded list:', e.message);
-      clients = MAKE_CLIENTS_FALLBACK.map(c => ({ ...c, assignee: '' }));
+      clients = MAKE_CLIENTS_FALLBACK.map(c => ({ ...c }));
       _makeClientsCache = clients;
     }
   }
@@ -4699,7 +4706,7 @@ async function loadMakeClientsIntoDropdown() {
     const isAdmin = (currentUser === SEO_MARKETING_HEAD || currentUser === 'Holly') && !isTeamView();
     const filtered = isAdmin
       ? clients
-      : clients.filter(c => !c.assignee || c.assignee.toLowerCase().split('@')[0] === mnViewingUser.toLowerCase());
+      : clients.filter(c => c.assignee && c.assignee.toLowerCase().split('@')[0] === mnViewingUser.toLowerCase());
     if (filtered.length) {
       if (isAdmin) {
         mnList.innerHTML = buildGroupedSidebar(filtered, 'mnSelectClient');
