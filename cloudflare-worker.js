@@ -253,14 +253,27 @@ async function handleGscInspect(request, env) {
 
 async function handleMake(request, env, url, path) {
   const makePath = path.replace(/^\/make\//, '');
-  const makeUrl  = `https://eu1.make.com/api/v2/${makePath}${url.search}`;
-  const res      = await fetch(makeUrl, {
-    method:  request.method,
-    headers: { 'Authorization': `Token ${env.MAKE_API_TOKEN}`, 'Content-Type': 'application/json' },
-    body:    ['GET','HEAD'].includes(request.method) ? undefined : await request.text(),
-  });
-  return new Response(await res.text(), {
-    status: res.status,
+  const qs       = url.search;
+  const body     = ['GET','HEAD'].includes(request.method) ? undefined : await request.text();
+  const headers  = { 'Authorization': `Token ${env.MAKE_API_TOKEN}`, 'Content-Type': 'application/json' };
+
+  // Try eu1 first, fall back to us1 and us2 for accounts on different regions
+  const bases = ['https://eu1.make.com/api/v2', 'https://us1.make.com/api/v2', 'https://us2.make.com/api/v2'];
+  let lastStatus = 0, lastBody = '';
+
+  for (const base of bases) {
+    const res  = await fetch(`${base}/${makePath}${qs}`, { method: request.method, headers, body });
+    const text = await res.text();
+    if (res.status !== 401) {
+      return new Response(text, { status: res.status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+    lastStatus = res.status;
+    lastBody   = text;
+  }
+
+  // All regions returned 401 — return last error with detail for debugging
+  return new Response(JSON.stringify({ error: `Make.com auth failed on all regions`, detail: lastBody }), {
+    status: lastStatus,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 }

@@ -4619,9 +4619,13 @@ async function loadMakeClientsIntoDropdown() {
       while (true) {
         const res = await fetch(
           CLAUDE_PROXY.replace(/\/$/, '') +
-          `/make/data-store-records?dataStoreId=157873&teamId=583475&limit=${limit}&offset=${offset}`
+          `/make/data-stores/157873/data-store-records?teamId=583475&limit=${limit}&offset=${offset}`
         );
-        if (!res.ok) throw new Error('fetch failed ' + res.status);
+        if (!res.ok) {
+          const errBody = await res.text();
+          console.error('[Make] API error', res.status, errBody);
+          throw new Error('fetch failed ' + res.status + ': ' + errBody.slice(0, 200));
+        }
         const data = await res.json();
         const page = Array.isArray(data.data) ? data.data
           : data.records || data.data?.records || (Array.isArray(data) ? data : []);
