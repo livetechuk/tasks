@@ -4655,7 +4655,7 @@ async function loadMakeClientsIntoDropdown() {
 
   const buildGroupedSidebar = (list, onclickFn) => {
     const grouped = {};
-    list.forEach(c => { const k = c.assignee || 'Unassigned'; if (!grouped[k]) grouped[k] = []; grouped[k].push(c); });
+    list.forEach(c => { const k = c.assignee || 'Unassigned'; if (k === 'Unassigned' || k === 'Holly') return; if (!grouped[k]) grouped[k] = []; grouped[k].push(c); });
     const order = ['sarah','charlie','megan','sabrina'];
     const keys = Object.keys(grouped).sort((a,b) => {
       const an = a.toLowerCase().split('@')[0], bn = b.toLowerCase().split('@')[0];

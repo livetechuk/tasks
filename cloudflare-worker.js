@@ -262,11 +262,11 @@ async function handleMakeClients(request, env) {
 
   const allRecords = [];
   let offset = 0;
+  let pageSize = 10; // Make.com default; updated from first response
 
   while (true) {
-    // Use literal pg[limit] here — worker fetch() sends them as-is to Make.com
     const res = await fetch(
-      `${base}/data-stores/${dsId}/data?teamId=${teamId}&pg[limit]=500&pg[offset]=${offset}`,
+      `${base}/data-stores/${dsId}/data?teamId=${teamId}&pg[offset]=${offset}`,
       { headers },
     );
     if (!res.ok) {
@@ -278,10 +278,10 @@ async function handleMakeClients(request, env) {
     }
     const data = await res.json();
     const page = data.records || [];
+    if (page.length === 0) break;
     allRecords.push(...page);
-    // Use pg.limit from response as the real page size
-    const pageSize = (data.pg && data.pg.limit) ? data.pg.limit : page.length;
-    if (page.length === 0 || page.length < pageSize) break;
+    if (data.pg && data.pg.limit) pageSize = data.pg.limit;
+    if (page.length < pageSize) break;
     offset += page.length;
     if (offset > 5000) break;
   }

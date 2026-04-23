@@ -64,13 +64,21 @@ The app uses Make.com as the **master client list** (not Supabase).
 
 Team ID: `583475`
 
-The `loadMakeClientsIntoDropdown()` function auto-discovers the data store:
-1. Calls `GET /make/data-stores?teamId=583475` to list all data stores
-2. Picks the one whose name contains "client" (case-insensitive)
-3. Fetches records via `GET /make/data-store-records?dataStoreId={id}&teamId=583475`
-4. Falls back to `MAKE_CLIENTS_FALLBACK` (hardcoded) if Make.com is unreachable
+The frontend calls `GET /make-clients` on the Cloudflare Worker. The worker handles all pagination internally:
+- Endpoint: `GET /data-stores/157873/data?teamId=583475&pg[offset]={n}` (Make.com v2)
+- Make.com returns 10 records per page by default; `pg[limit]` values >10 return 400
+- Worker loops with `pg[offset]` until a partial page signals the end
+- Returns `{ records: [...] }` to the frontend in one response
+- Falls back to `MAKE_CLIENTS_FALLBACK` (13 hardcoded) if the worker call fails
 
-Each client record is expected to have fields: `name`, `bq_dataset` (e.g. `searchconsole_novachrome`), `assignee` (team member first name or email), `drive_folder_id`.
+**Important endpoint notes (hard-won):**
+- `/data-stores/{id}/data` ✅ correct path
+- `/data-stores/{id}/data-store-records` ❌ returns 404
+- `/data-store-records?dataStoreId={id}` ❌ returns 404
+- `pg[limit]=500` ❌ returns 400 (Make.com rejects large limits)
+- `pg[offset]=N` ✅ only way to paginate
+
+Each client record has fields: `data['Client Name']`, `data['Assignee']` (email like `megan@livetech.co.uk`). No `bq_dataset` field — client `id` falls back to record `key` (hex string). Assignee is normalised to capitalised first name at load time. Holly and Unassigned are filtered out of the sidebar display.
 
 ---
 
