@@ -2765,8 +2765,8 @@ function renderTimesheetsView(){
       return `<div class="mt-section-title">Client Time</div><div class="ts-empty" style="padding:1rem 0">Loading...</div>`;
     }
     const mtClients = (_makeClientsCache||MAKE_CLIENTS_FALLBACK).filter(c => {
-      if (currentUser===SEO_MARKETING_HEAD||currentUser==='Holly') return true;
-      return (c.assignee||'').toLowerCase().split('@')[0]===mtUser.toLowerCase();
+      if ((currentUser===SEO_MARKETING_HEAD||currentUser==='Holly') && !isTeamView()) return true;
+      return c.assignee && c.assignee.toLowerCase().split('@')[0]===mtUser.toLowerCase();
     });
     const todayStr=isoToday();
     const td=new Date(todayStr+'T00:00:00');
@@ -4633,6 +4633,9 @@ async function loadMakeClientsIntoDropdown() {
       }
       console.log('[Make] total records fetched:', allRecords.length);
       if (allRecords.length) {
+        // Log the first raw record so we can identify field names if needed
+        if (allRecords[0]) console.log('[Make] first raw record keys:', JSON.stringify(allRecords[0]));
+        const SEO_NAMES = ['sarah','charlie','megan','sabrina'];
         const mapped = allRecords.map(r => {
           const v = r.value || r.data || r;
           const bq = v.bq_dataset || v.dataset || v.bigquery_dataset || v.bq
@@ -4641,13 +4644,14 @@ async function loadMakeClientsIntoDropdown() {
           const name = v.name || v.client_name || v['Client Name'] || v['Name'] || v.title || v.label
             || Object.values(v).find(val => typeof val === 'string' && val !== bq && !val.startsWith('http') && val.length > 1 && val.length < 60)
             || r.key || bq;
-          // Try every plausible field name the Make.com datastore might use for assignee
+          // Try named fields first
           let assignee = v.assignee || v.Assignee || v.assigned_to || v.assigned || v.owner
-            || v.user || v.team_member || v['Assigned To'] || v['assigned_to'] || v['User'] || '';
-          // If still empty, fall back to the hardcoded mapping keyed by bq_dataset
-          if (!assignee && bq) {
-            const fb = MAKE_CLIENTS_FALLBACK.find(f => f.bq_dataset === bq);
-            assignee = fb?.assignee || '';
+            || v.user || v.team_member || v['Assigned To'] || v['assigned_to'] || v['User']
+            || v.account_manager || v['Account Manager'] || v.responsible || v.member || '';
+          // If still empty, scan every string field for a team member name or email
+          if (!assignee) {
+            const allVals = Object.values(v).filter(val => typeof val === 'string');
+            assignee = allVals.find(val => SEO_NAMES.some(n => val.toLowerCase().includes(n))) || '';
           }
           return { id: bq || r.key, name, bq_dataset: bq, assignee, drive_folder_id: v.drive_folder_id || '' };
         }).filter(c => c.id);
