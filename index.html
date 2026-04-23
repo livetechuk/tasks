@@ -4612,45 +4612,11 @@ async function loadMakeClientsIntoDropdown() {
   let clients = _makeClientsCache;
   if (!clients) {
     try {
-      // Auto-discover correct data store ID by listing all data stores
-      const dsListRes = await fetch(
-        CLAUDE_PROXY.replace(/\/$/, '') + `/make/data-stores?teamId=583475`
-      );
-      let dataStoreId = null;
-      if (dsListRes.ok) {
-        const dsData = await dsListRes.json();
-        const dsList = dsData.dataStores || dsData.data || dsData.records || (Array.isArray(dsData) ? dsData : []);
-        console.log('[Make] data stores:', JSON.stringify(dsList.map(d => ({ id: d.id, name: d.name }))));
-        // Prefer one whose name contains "client" (case-insensitive), else take first
-        const preferred = dsList.find(d => d.name && /client/i.test(d.name)) || dsList[0];
-        if (preferred) dataStoreId = preferred.id;
-      }
-      if (!dataStoreId) {
-        console.warn('[Make] could not discover data store, trying known ID 157873');
-        dataStoreId = 157873;
-      }
-
-      // Make.com v2 correct records endpoint: /data-stores/{id}/data
-      // Default page size is 10; paginate with limit + offset until all records loaded
-      const allRecords = [];
-      const limit = 500;
-      let offset = 0;
-      while (true) {
-        const res = await fetch(
-          CLAUDE_PROXY.replace(/\/$/, '') +
-          `/make/data-stores/${dataStoreId}/data?teamId=583475&limit=${limit}&offset=${offset}`
-        );
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error('fetch failed ' + res.status + ': ' + errText.slice(0, 200));
-        }
-        const data = await res.json();
-        const page = data.records || (Array.isArray(data) ? data : []);
-        allRecords.push(...page);
-        if (page.length < limit) break;
-        offset += limit;
-        if (offset > 5000) break;
-      }
+      // Worker handles all pagination server-side — one request returns all records
+      const res = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/make-clients');
+      if (!res.ok) throw new Error('fetch failed ' + res.status);
+      const data = await res.json();
+      const allRecords = data.records || [];
       console.log('[Make] total records loaded:', allRecords.length);
       if (!allRecords.length) throw new Error('empty response');
       // Normalise assignee to capitalised first name so filter comparisons are reliable.

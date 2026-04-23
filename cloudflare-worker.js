@@ -39,6 +39,7 @@ export default {
       if (path.startsWith('/clickup/'))              return handleClickUp(request, env, url, path);
       if (request.method === 'POST' && path === '/bigquery')    return handleBigQuery(request, env);
       if (request.method === 'POST' && path === '/gsc-inspect') return handleGscInspect(request, env);
+      if (path === '/make-clients')                   return handleMakeClients(request, env);
       if (path.startsWith('/make/'))                 return handleMake(request, env, url, path);
       if (path === '/make-debug')                    return handleMakeDebug(request, env);
 
@@ -246,6 +247,46 @@ async function handleGscInspect(request, env) {
   }
 
   return new Response(JSON.stringify(results), {
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+  });
+}
+
+// ── Make.com clients — fetches all records from the Marketing Clients data store ──
+// Paginates server-side so the frontend gets everything in one request.
+
+async function handleMakeClients(request, env) {
+  const base    = 'https://eu2.make.com/api/v2';
+  const headers = { 'Authorization': `Token ${env.MAKE_API_TOKEN}`, 'Content-Type': 'application/json' };
+  const dsId    = 157873;
+  const teamId  = 583475;
+
+  const allRecords = [];
+  let offset = 0;
+
+  while (true) {
+    // Use literal pg[limit] here — worker fetch() sends them as-is to Make.com
+    const res = await fetch(
+      `${base}/data-stores/${dsId}/data?teamId=${teamId}&pg[limit]=500&pg[offset]=${offset}`,
+      { headers },
+    );
+    if (!res.ok) {
+      const body = await res.text();
+      return new Response(JSON.stringify({ error: `Make.com ${res.status}: ${body}` }), {
+        status: res.status,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+    const data = await res.json();
+    const page = data.records || [];
+    allRecords.push(...page);
+    // Use pg.limit from response as the real page size
+    const pageSize = (data.pg && data.pg.limit) ? data.pg.limit : page.length;
+    if (page.length === 0 || page.length < pageSize) break;
+    offset += page.length;
+    if (offset > 5000) break;
+  }
+
+  return new Response(JSON.stringify({ records: allRecords }), {
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 }
