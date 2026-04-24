@@ -3671,6 +3671,9 @@ function renderMarketingReview() {
                 <label style="font-size:12px;color:#888;font-weight:600">GSC Property</label>
                 <input type="text" id="mr-gsc-property" placeholder="https://example.com/" oninput="mrSaveGscProperty()"
                   style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:210px;color:#555">
+                <label style="font-size:12px;color:#888;font-weight:600">Sitemap URL</label>
+                <input type="text" id="mr-sitemap-url" placeholder="auto-detect" oninput="mrSaveSitemapUrl()"
+                  style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:200px;color:#555">
                 <label style="font-size:12px;color:#888;font-weight:600">Month</label>
                 <select id="mr-month" onchange="_mrPerformanceCache=null;mrLoadData()" class="seo-select">${getSeoMonthOptions()}</select>
                 <button class="seo-btn" onclick="mrRefresh()" id="mr-refresh-btn" style="white-space:nowrap">Refresh SC Data</button>
@@ -3770,6 +3773,7 @@ function mrSelectClient(id, name) {
   if (document.getElementById('mr-content')) document.getElementById('mr-content').style.display = 'block';
   if (document.getElementById('mr-client-heading')) document.getElementById('mr-client-heading').textContent = name;
   mrLoadGscProperty();
+  mrLoadSitemapUrl();
   mrLoadData();
 }
 
@@ -3874,42 +3878,87 @@ async function mrInspect() {
   if (!gscProperty) { showSeoMsg('mr-msg', 'Enter a GSC Property URL first.', 'error'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Fetching sitemap...'; }
   try {
-    // Fetch sitemap URLs
     let urlsToInspect = [];
     const base = gscProperty.replace(/\/$/, '');
-    for (const smUrl of [`${base}/sitemap_index.xml`, `${base}/sitemap.xml`, `${base}/wp-sitemap.xml`]) {
+    const customSitemap = document.getElementById('mr-sitemap-url')?.value?.trim();
+    const proxy = CLAUDE_PROXY.replace(/\/$/, '');
+
+    async function fetchSitemapUrls(smUrl) {
+      const r = await fetch(proxy + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
+      const d = await r.json();
+      return r.ok && d.urls?.length > 0 ? d.urls : [];
+    }
+
+    if (customSitemap) {
+      // User-specified sitemap takes priority
+      urlsToInspect = await fetchSitemapUrls(customSitemap);
+    }
+
+    if (!urlsToInspect.length) {
+      // Try sitemaps submitted in Google Search Console
       try {
-        const smRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
-        const smData = await smRes.json();
-        if (smRes.ok && smData.urls?.length > 0) { urlsToInspect = smData.urls; break; }
+        const gscSmRes = await fetch(proxy + '/gsc-sitemaps?siteUrl=' + encodeURIComponent(gscProperty));
+        if (gscSmRes.ok) {
+          const gscSmData = await gscSmRes.json();
+          const submitted = (gscSmData.sitemap || []).map(s => s.path).filter(Boolean);
+          for (const smUrl of submitted) {
+            const urls = await fetchSitemapUrls(smUrl);
+            urlsToInspect.push(...urls);
+            if (urlsToInspect.length >= 3000) break;
+          }
+        }
       } catch(_) {}
     }
-    if (!urlsToInspect.length) { showSeoMsg('mr-msg', 'Could not fetch sitemap. Check the GSC Property URL.', 'error'); return; }
+
+    if (!urlsToInspect.length) {
+      // Fall back to auto-detecting common sitemap paths
+      for (const smUrl of [`${base}/sitemap_index.xml`, `${base}/sitemap.xml`, `${base}/wp-sitemap.xml`]) {
+        try { urlsToInspect = await fetchSitemapUrls(smUrl); if (urlsToInspect.length) break; } catch(_) {}
+      }
+    }
+
+    if (!urlsToInspect.length) { showSeoMsg('mr-msg', 'Could not fetch sitemap. Enter a Sitemap URL or check the GSC Property URL.', 'error'); return; }
 
     // Crawl the site to discover URLs not in the sitemap (linked pages, potential 404s, redirects)
+    // Goes 3 levels deep: homepage → section pages → inner pages (product listings, archives, etc.)
     if (btn) btn.textContent = 'Crawling site for additional URLs...';
     const allUrlSet = new Set(urlsToInspect.map(u => u.replace(/\/+$/, '')));
+
+    async function crawlPage(pageUrl) {
+      try {
+        const r = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/crawl-site?url=' + encodeURIComponent(pageUrl));
+        return r.ok ? ((await r.json()).urls || []) : [];
+      } catch { return []; }
+    }
+
+    async function crawlBatch(urls) {
+      const results = [];
+      for (let i = 0; i < urls.length; i += 5) {
+        const batch = await Promise.all(urls.slice(i, i + 5).map(crawlPage));
+        results.push(...batch.flat());
+      }
+      return results;
+    }
+
     try {
       // Depth 1: homepage
-      const homeRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/crawl-site?url=' + encodeURIComponent(base));
-      if (homeRes.ok) {
-        const homeData = await homeRes.json();
-        const depth1New = (homeData.urls || []).filter(u => !allUrlSet.has(u.replace(/\/+$/, '')));
-        depth1New.forEach(u => allUrlSet.add(u.replace(/\/+$/, '')));
-        // Depth 2: crawl the first 50 depth-1 pages in parallel batches of 5
-        const toDepth2 = depth1New.slice(0, 50);
-        for (let i = 0; i < toDepth2.length; i += 5) {
-          const batch = toDepth2.slice(i, i + 5);
-          const results = await Promise.all(batch.map(async pageUrl => {
-            try {
-              const r = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/crawl-site?url=' + encodeURIComponent(pageUrl));
-              return r.ok ? ((await r.json()).urls || []) : [];
-            } catch { return []; }
-          }));
-          results.flat().forEach(u => allUrlSet.add(u.replace(/\/+$/, '')));
-        }
-      }
+      const depth1All = await crawlPage(base);
+      const depth1New = depth1All.filter(u => !allUrlSet.has(u.replace(/\/+$/, '')));
+      depth1New.forEach(u => allUrlSet.add(u.replace(/\/+$/, '')));
+
+      if (btn) btn.textContent = `Crawling depth 2 (${depth1New.length} pages)...`;
+      // Depth 2: crawl ALL depth-1 pages (full, not sampled)
+      const depth2All = await crawlBatch(depth1New);
+      const depth2New = depth2All.filter(u => !allUrlSet.has(u.replace(/\/+$/, '')));
+      depth2New.forEach(u => allUrlSet.add(u.replace(/\/+$/, '')));
+
+      if (btn) btn.textContent = `Crawling depth 3 (sampling ${Math.min(depth2New.length, 100)} pages)...`;
+      // Depth 3: crawl up to 100 depth-2 pages (sampled — avoids runaway on large sites)
+      const depth3Sample = depth2New.slice(0, 100);
+      const depth3All = await crawlBatch(depth3Sample);
+      depth3All.filter(u => !allUrlSet.has(u.replace(/\/+$/, ''))).forEach(u => allUrlSet.add(u.replace(/\/+$/, '')));
     } catch(_) {}
+
     urlsToInspect = [...allUrlSet];
     const GSC_DAILY_CAP = 2000;
     if (urlsToInspect.length > GSC_DAILY_CAP) {
@@ -4037,6 +4086,17 @@ function mrLoadGscProperty() {
     val = client?.wp_url || '';
   }
   el.value = val;
+}
+
+function mrSaveSitemapUrl() {
+  const val = document.getElementById('mr-sitemap-url')?.value || '';
+  if (_mrCurrentClientId) localStorage.setItem(`mr_sitemap_${_mrCurrentClientId}`, val);
+}
+
+function mrLoadSitemapUrl() {
+  const el = document.getElementById('mr-sitemap-url');
+  if (!el) return;
+  el.value = _mrCurrentClientId ? (localStorage.getItem(`mr_sitemap_${_mrCurrentClientId}`) || '') : '';
 }
 
 function mrAddFinding(name, gscCount, savedUrls) {

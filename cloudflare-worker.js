@@ -39,8 +39,9 @@ export default {
       if (path.startsWith('/clickup/'))              return handleClickUp(request, env, url, path);
       if (request.method === 'POST' && path === '/bigquery')    return handleBigQuery(request, env);
       if (request.method === 'POST' && path === '/gsc-inspect') return handleGscInspect(request, env);
+      if (path === '/gsc-sitemaps')                             return handleGscSitemaps(request, env, url);
       if (path === '/fetch-sitemap')                            return handleFetchSitemap(request, env, url);
-      if (path === '/crawl-site')                           return handleCrawlSite(request, env, url);
+      if (path === '/crawl-site')                               return handleCrawlSite(request, env, url);
       if (path === '/make-clients')                   return handleMakeClients(request, env);
       if (path.startsWith('/make/'))                 return handleMake(request, env, url, path);
       if (path === '/make-debug')                    return handleMakeDebug(request, env);
@@ -251,6 +252,21 @@ async function handleGscInspect(request, env) {
   return new Response(JSON.stringify(results), {
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
+}
+
+// ── GSC submitted sitemaps ────────────────────────────────
+// GET /gsc-sitemaps?siteUrl=<encoded-url>
+// Returns the list of sitemaps submitted for the GSC property.
+
+async function handleGscSitemaps(request, env, url) {
+  const siteUrl = url.searchParams.get('siteUrl');
+  if (!siteUrl) return new Response(JSON.stringify({ error: 'siteUrl required' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+  const token = await getGoogleToken(env, ['https://www.googleapis.com/auth/webmasters.readonly']);
+  const res = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/sitemaps`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  const body = await res.text();
+  return new Response(body, { status: res.status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
 
 // ── Sitemap fetcher ───────────────────────────────────────
