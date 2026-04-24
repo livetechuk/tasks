@@ -3878,45 +3878,40 @@ async function mrInspect() {
   if (!gscProperty) { showSeoMsg('mr-msg', 'Enter a GSC Property URL first.', 'error'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Fetching sitemap...'; }
   try {
-    let urlsToInspect = [];
     const base = gscProperty.replace(/\/$/, '');
     const customSitemap = document.getElementById('mr-sitemap-url')?.value?.trim();
     const proxy = CLAUDE_PROXY.replace(/\/$/, '');
+    const sitemapUrlSet = new Set();
 
-    async function fetchSitemapUrls(smUrl) {
-      const r = await fetch(proxy + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
-      const d = await r.json();
-      return r.ok && d.urls?.length > 0 ? d.urls : [];
-    }
-
-    if (customSitemap) {
-      // User-specified sitemap takes priority
-      urlsToInspect = await fetchSitemapUrls(customSitemap);
-    }
-
-    if (!urlsToInspect.length) {
-      // Try sitemaps submitted in Google Search Console
+    async function addSitemapUrls(smUrl) {
       try {
-        const gscSmRes = await fetch(proxy + '/gsc-sitemaps?siteUrl=' + encodeURIComponent(gscProperty));
-        if (gscSmRes.ok) {
-          const gscSmData = await gscSmRes.json();
-          const submitted = (gscSmData.sitemap || []).map(s => s.path).filter(Boolean);
-          for (const smUrl of submitted) {
-            const urls = await fetchSitemapUrls(smUrl);
-            urlsToInspect.push(...urls);
-            if (urlsToInspect.length >= 3000) break;
-          }
-        }
+        const r = await fetch(proxy + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
+        const d = await r.json();
+        if (r.ok && d.urls?.length) d.urls.forEach(u => sitemapUrlSet.add(u));
       } catch(_) {}
     }
 
-    if (!urlsToInspect.length) {
-      // Fall back to auto-detecting common sitemap paths
-      for (const smUrl of [`${base}/sitemap_index.xml`, `${base}/sitemap.xml`, `${base}/wp-sitemap.xml`]) {
-        try { urlsToInspect = await fetchSitemapUrls(smUrl); if (urlsToInspect.length) break; } catch(_) {}
+    // Always try all sources and take the union — more sources = better coverage
+    // 1. Custom sitemap if provided
+    if (customSitemap) await addSitemapUrls(customSitemap);
+
+    // 2. Sitemaps submitted in Google Search Console
+    try {
+      const gscSmRes = await fetch(proxy + '/gsc-sitemaps?siteUrl=' + encodeURIComponent(gscProperty));
+      if (gscSmRes.ok) {
+        const gscSmData = await gscSmRes.json();
+        for (const sm of (gscSmData.sitemap || [])) {
+          if (sm.path && sitemapUrlSet.size < 3000) await addSitemapUrls(sm.path);
+        }
       }
+    } catch(_) {}
+
+    // 3. Auto-detect common paths (always run — fills gaps if GSC sitemaps are partial)
+    for (const smUrl of [`${base}/sitemap_index.xml`, `${base}/sitemap.xml`, `${base}/wp-sitemap.xml`]) {
+      if (sitemapUrlSet.size < 3000) await addSitemapUrls(smUrl);
     }
 
+    let urlsToInspect = [...sitemapUrlSet];
     if (!urlsToInspect.length) { showSeoMsg('mr-msg', 'Could not fetch sitemap. Enter a Sitemap URL or check the GSC Property URL.', 'error'); return; }
 
     // Crawl the site to discover URLs not in the sitemap (linked pages, potential 404s, redirects)
