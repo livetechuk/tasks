@@ -3862,24 +3862,38 @@ async function mrRefresh() {
         if (btn) btn.textContent = 'Fetching sitemap...';
         let urlsToInspect = [];
         const base = gscProperty.replace(/\/$/, '');
-        const sitemapCandidates = [`${base}/sitemap.xml`, `${base}/wp-sitemap.xml`, `${base}/sitemap_index.xml`];
+
+        // Try robots.txt first to discover the sitemap URL
+        const sitemapCandidates = [];
+        try {
+          const robotsRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/fetch-sitemap?url=' + encodeURIComponent(`${base}/robots.txt`));
+          if (robotsRes.ok) {
+            const robotsData = await robotsRes.json();
+            // robots.txt sitemap lines are returned as "urls" by our parser
+            // Actually robots.txt isn't XML — fall through to candidates
+          }
+        } catch(_) {}
+        sitemapCandidates.push(`${base}/sitemap.xml`, `${base}/wp-sitemap.xml`, `${base}/sitemap_index.xml`);
+
         for (const smUrl of sitemapCandidates) {
           try {
+            console.log('[SC] Trying sitemap:', smUrl);
             const smRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
-            if (smRes.ok) {
-              const smData = await smRes.json();
-              if (smData.urls && smData.urls.length > 0) {
-                urlsToInspect = smData.urls;
-                console.log(`[SC] Got ${urlsToInspect.length} URLs from sitemap: ${smUrl}`);
-                break;
-              }
+            const smData = await smRes.json();
+            console.log('[SC] Sitemap result:', smUrl, '→', smRes.status, smData.count, 'URLs, error:', smData.error);
+            if (smRes.ok && smData.urls && smData.urls.length > 0) {
+              urlsToInspect = smData.urls;
+              break;
             }
-          } catch(_) {}
+          } catch(e) { console.warn('[SC] Sitemap fetch error:', smUrl, e.message); }
         }
+
         // Fall back to BigQuery URLs if no sitemap found
         if (!urlsToInspect.length) {
           urlsToInspect = rows.map(r => r.url);
-          console.log('[SC] No sitemap found, falling back to BQ URLs');
+          console.log('[SC] No sitemap found, falling back to', urlsToInspect.length, 'BQ URLs');
+        } else {
+          console.log('[SC] Using', urlsToInspect.length, 'sitemap URLs for inspection');
         }
 
         // Step 2: inspect all URLs
