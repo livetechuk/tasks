@@ -641,6 +641,35 @@
   .mn-group-toggle:hover { background: #f5f5f3; color: #444; }
   .mn-group-caret { font-size: 10px; }
   .mn-group-clients { padding-left: 4px; }
+  /* Meeting notes section headers */
+  .mn-section { background:#fff; border:0.5px solid #e0ddd6; border-radius:12px; margin-bottom:8px; overflow:hidden; }
+  .mn-sh { display:flex; align-items:center; gap:10px; padding:10px 16px; cursor:pointer; user-select:none; }
+  .mn-sh:hover { filter:brightness(1.06); }
+  .mn-sn { font-size:11px; font-weight:700; color:rgba(255,255,255,0.65); min-width:18px; }
+  .mn-st { font-size:13px; font-weight:600; color:#fff; flex:1; }
+  .mn-sbadge { font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; background:rgba(255,255,255,0.2); color:#fff; flex-shrink:0; }
+  .mn-chev { font-size:10px; color:rgba(255,255,255,0.6); transition:transform 0.2s; }
+  .mn-sh.mn-open .mn-chev { transform:rotate(180deg); }
+  .mn-sb { border-top:0.5px solid #e0ddd6; display:none; }
+  .mn-sb.mn-open { display:block; }
+  .mn-fg { padding:12px 16px; border-bottom:0.5px solid #f3f4f6; }
+  .mn-fg:last-child { border-bottom:none; }
+  .mn-fl { font-size:12px; font-weight:600; color:#374151; margin-bottom:3px; }
+  .mn-fh { font-size:11px; color:#9ca3af; margin-bottom:5px; font-style:italic; }
+  .mn-2col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .mn-tbl { width:100%; border-collapse:collapse; font-size:12px; }
+  .mn-tbl th { padding:7px 10px; font-size:11px; font-weight:700; text-align:left; color:#6b7280; text-transform:uppercase; letter-spacing:0.4px; border:1px solid #e5e7eb; background:#f3f4f6; }
+  .mn-tbl td { border:1px solid #e5e7eb; padding:0; vertical-align:middle; }
+  .mn-tbl td.mn-rl { background:#f9fafb; padding:7px 10px; font-size:12px; font-weight:600; color:#6b7280; white-space:nowrap; }
+  .mn-tbl td input, .mn-tbl td select, .mn-tbl td textarea { width:100%; border:none; background:transparent; padding:6px 9px; font-size:12px; color:#1a1a1a; font-family:inherit; }
+  .mn-tbl td textarea { resize:none; min-height:34px; border-radius:0; }
+  .mn-tbl td input:focus, .mn-tbl td select:focus, .mn-tbl td textarea:focus { outline:none; background:#fffbf0; box-shadow:inset 0 0 0 2px #2a6b9a; }
+  .mn-tbl.mn-goals th { background:var(--navy); color:#fff; border-color:#1a4270; }
+  .mn-tbl.mn-cmp th.mn-m1 { background:#1F4E79; color:#fff; border-color:#1a4270; }
+  .mn-tbl.mn-cmp th.mn-m2 { background:#2d6ea8; color:#fff; }
+  .mn-tbl.mn-cmp th.mn-m3 { background:#3d8fd4; color:#fff; }
+  .mn-tbl.mn-cmp th.mn-trend { background:#375623; color:#fff; }
+  .mn-tbl.mn-cmp input.mn-mh { background:transparent!important; color:#fff!important; font-size:11px!important; font-weight:700; padding:0!important; box-shadow:none!important; width:100%; font-family:inherit; }
   @media (max-width: 700px) { .mn-layout { flex-direction: column; } .mn-sidebar { width: auto; position: static; max-height: none; } }
 </style>
 <!-- Microsoft Authentication Library -->
@@ -3671,6 +3700,8 @@ function renderMarketingReview() {
                 <label style="font-size:12px;color:#888;font-weight:600">GSC Property</label>
                 <input type="text" id="mr-gsc-property" placeholder="https://example.com/" oninput="mrSaveGscProperty()"
                   style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:210px;color:#555">
+                <button onclick="mrToggleDomainProperty()" id="mr-domain-toggle" title="Toggle between URL-prefix and domain property format (sc-domain:)"
+                  style="font-size:11px;padding:4px 8px;border:0.5px solid #ddd;border-radius:6px;background:#f5f5f5;color:#666;cursor:pointer;font-family:inherit;white-space:nowrap">sc-domain</button>
                 <label style="font-size:12px;color:#888;font-weight:600">Sitemap URL</label>
                 <input type="text" id="mr-sitemap-url" placeholder="auto-detect" oninput="mrSaveSitemapUrl()"
                   style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:200px;color:#555">
@@ -3774,6 +3805,7 @@ function mrSelectClient(id, name) {
   if (document.getElementById('mr-client-heading')) document.getElementById('mr-client-heading').textContent = name;
   mrLoadGscProperty();
   mrLoadSitemapUrl();
+  mrUpdateDomainToggleStyle();
   mrLoadData();
 }
 
@@ -3994,7 +4026,8 @@ async function mrInspect() {
       const total = autoFindings.reduce((s, f) => s + f.urls.length, 0);
       showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) across ${total} URLs (${ok.length} of ${urlsToInspect.length} inspected — sitemap + crawled pages).`, 'success');
     } else if (errors.length === inspected.length && inspected.length > 0) {
-      showSeoMsg('mr-msg', 'All URL checks failed — ensure the service account has Full access to this GSC property.', 'error');
+      const sample = errors[0]?.error || 'unknown error';
+      showSeoMsg('mr-msg', `All URL checks failed — ensure the service account has Full access to this GSC property. First error: ${sample}`, 'error');
     } else {
       showSeoMsg('mr-msg', `Inspected ${ok.length} URLs — all indexed, no issues found.`, 'info');
     }
@@ -4069,6 +4102,7 @@ function mrMapCoverageState(state) {
 function mrSaveGscProperty() {
   const val = document.getElementById('mr-gsc-property')?.value || '';
   if (_mrCurrentClientId) localStorage.setItem(`mr_gsc_${_mrCurrentClientId}`, val);
+  mrUpdateDomainToggleStyle();
 }
 
 function mrLoadGscProperty() {
@@ -4081,6 +4115,37 @@ function mrLoadGscProperty() {
     val = client?.wp_url || '';
   }
   el.value = val;
+}
+
+function mrToggleDomainProperty() {
+  const el = document.getElementById('mr-gsc-property');
+  if (!el) return;
+  const val = el.value.trim();
+  if (val.startsWith('sc-domain:')) {
+    // Convert sc-domain:example.com → https://www.example.com/
+    const domain = val.replace('sc-domain:', '').trim();
+    el.value = `https://www.${domain}/`;
+  } else {
+    // Convert https://www.example.com/ → sc-domain:example.com
+    try {
+      const host = new URL(val.endsWith('/') ? val : val + '/').hostname.replace(/^www\./, '');
+      el.value = `sc-domain:${host}`;
+    } catch(_) {
+      el.value = `sc-domain:${val.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}`;
+    }
+  }
+  mrSaveGscProperty();
+  mrUpdateDomainToggleStyle();
+}
+
+function mrUpdateDomainToggleStyle() {
+  const btn = document.getElementById('mr-domain-toggle');
+  const val = document.getElementById('mr-gsc-property')?.value || '';
+  if (!btn) return;
+  const isDomain = val.startsWith('sc-domain:');
+  btn.style.background = isDomain ? 'var(--navy)' : '#f5f5f5';
+  btn.style.color = isDomain ? '#fff' : '#666';
+  btn.style.borderColor = isDomain ? 'var(--navy)' : '#ddd';
 }
 
 function mrSaveSitemapUrl() {
@@ -4307,95 +4372,151 @@ function renderMeetingNotes() {
           Select a client from the list to start your notes
         </div>
         <div id="mn-form" style="display:none">
-          <div id="mn-assignee-tabs" style="display:none;gap:0;margin-bottom:12px;background:#fff;border:0.5px solid #e0ddd6;border-radius:10px;overflow:hidden;width:fit-content"></div>
-          <div class="mn-card">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+          <div id="mn-assignee-tabs" style="display:none;gap:0;margin-bottom:10px;background:#fff;border:0.5px solid #e0ddd6;border-radius:10px;overflow:hidden;width:fit-content"></div>
+          <!-- Header card -->
+          <div class="mn-card" style="margin-bottom:10px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
               <span id="mn-client-heading" style="font-size:16px;font-weight:600;color:var(--navy)"></span>
               <div style="display:flex;gap:8px;align-items:center">
                 <label style="font-size:12px;color:#888;font-weight:600">Meeting Date</label>
                 <input type="date" id="mn-date" class="seo-select" style="width:160px">
               </div>
             </div>
-            <div id="mn-status" style="display:none;padding:8px 12px;border-radius:8px;margin-bottom:16px;font-size:13px"></div>
+          </div><!-- /header card -->
+          <div id="mn-status" style="display:none;padding:8px 12px;border-radius:8px;margin-bottom:8px;font-size:13px"></div>
 
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">Search Console Tasks Carried Out</span>
-              <div id="mn-sc-auto" style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px;border-radius:4px;font-size:13px;color:#555;line-height:1.6">
-                <em>No SC data selected yet &mdash; Sarah selects URLs in Marketing Review.</em>
+          <!-- S1: Meeting Information -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#1F4E79" onclick="mnToggle('mn-s1')"><span class="mn-sn">01</span><span class="mn-st">Meeting Information</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s1">
+              <div class="mn-fg"><div class="mn-2col">
+                <div><div class="mn-fl">Meeting type</div><input type="text" id="mn-meeting-type" class="mn-textarea" style="min-height:0;padding:7px 10px" placeholder="e.g. Monthly review"></div>
+                <div><div class="mn-fl">Meeting format</div><select id="mn-meeting-format" class="seo-select"><option>Remote / call</option><option>Face to face</option><option>Email only</option></select></div>
+              </div></div>
+              <div class="mn-fg"><div class="mn-fl">Contact form checked</div><input type="date" id="mn-form-check" class="seo-select" style="width:180px"></div>
+            </div>
+          </div>
+
+          <!-- S2: Client Goals -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#1F4E79" onclick="mnToggle('mn-s2')"><span class="mn-sn">02</span><span class="mn-st">Client Goals &amp; Progress</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s2">
+              <div class="mn-fg">
+                <div class="mn-fl" style="margin-bottom:5px">Agreed goals — update status each month</div>
+                <div class="mn-fh">Set goals once, update status and notes every month.</div>
+                <div style="overflow-x:auto"><table class="mn-tbl mn-goals"><thead><tr><th style="width:28%">Goal</th><th style="width:17%">Target / KPI</th><th style="width:11%">Status</th><th>Progress notes this month</th><th style="width:12%">Target date</th></tr></thead><tbody id="mn-goals-body"></tbody></table></div>
+                <button onclick="mnAddGoalRow()" style="margin-top:8px;font-size:12px;padding:4px 12px;border:1px solid #d1d5db;border-radius:6px;background:#f3f4f6;color:#374151;cursor:pointer;font-family:inherit">+ Add goal</button>
               </div>
+              <div class="mn-fg"><div class="mn-fl">Overall goal summary this month</div><textarea id="mn-goals-summary" class="mn-textarea" rows="2" placeholder="One or two sentences on where the client stands against their goals."></textarea></div>
             </div>
+          </div>
 
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">What has the client/business been up to over the last month?</span>
-              <textarea id="mn-activity" class="mn-textarea" placeholder="Describe recent client and business activity..."></textarea>
-            </div>
-
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">What tasks have been carried out over the last month?</span>
-              <textarea id="mn-tasks" class="mn-textarea" placeholder="List SEO and marketing tasks carried out this month..."></textarea>
-            </div>
-
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">Planned Work for the Coming Month</span>
-              <textarea id="mn-planned" class="mn-textarea" placeholder="What is planned for next month?"></textarea>
-            </div>
-
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">SEO Checklist Status</span>
-              <div style="display:flex;gap:20px;margin-top:4px;flex-wrap:wrap">
-                <label style="display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer"><input type="radio" name="mn-checklist" value="complete"> Complete</label>
-                <label style="display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer"><input type="radio" name="mn-checklist" value="pending"> Pending</label>
-                <label style="display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer"><input type="radio" name="mn-checklist" value="needs-doing"> Needs to be Done</label>
+          <!-- S3: Month-on-Month -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#1a6b3c" onclick="mnToggle('mn-s3')"><span class="mn-sn">03</span><span class="mn-st">Month-on-Month Performance</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s3">
+              <div class="mn-fg">
+                <div class="mn-fh" style="margin-bottom:8px">Click month headings to rename them.</div>
+                <div style="overflow-x:auto"><table class="mn-tbl mn-cmp"><thead><tr><th style="width:32%">Metric</th><th class="mn-m1"><input class="mn-mh" id="mn-mh1" placeholder="This month"></th><th class="mn-m2"><input class="mn-mh" id="mn-mh2" placeholder="Last month"></th><th class="mn-m3"><input class="mn-mh" id="mn-mh3" placeholder="2 months ago"></th><th class="mn-trend" style="width:11%">Trend</th></tr></thead><tbody id="mn-cmp-body"></tbody></table></div>
               </div>
+              <div class="mn-fg"><div class="mn-fl">Key observations this month</div><textarea id="mn-cmp-notes" class="mn-textarea" rows="3" placeholder="What do the numbers tell you? Patterns, surprises, things to flag?"></textarea></div>
             </div>
+          </div>
 
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">Focus Keywords</span>
-              <textarea id="mn-keywords" class="mn-textarea" placeholder="List focus keywords for this client..."></textarea>
+          <!-- S4: Client Business Update -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#C55A11" onclick="mnToggle('mn-s4')"><span class="mn-sn">04</span><span class="mn-st">Client Business Update</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s4">
+              <div class="mn-fg"><div class="mn-fl">What has the client been up to this month?</div><div class="mn-fh">New services, campaigns, seasonal focus, team changes…</div><textarea id="mn-activity" class="mn-textarea" rows="3" placeholder="Describe recent client and business activity..."></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Key priorities the client has mentioned for next month</div><textarea id="mn-biz-priorities" class="mn-textarea" rows="2" placeholder="e.g. push a new service, upcoming events, new pages needed…"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Any feedback from the client on our work?</div><textarea id="mn-biz-feedback" class="mn-textarea" rows="2"></textarea></div>
             </div>
+          </div>
 
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">Website Audit</span>
-              <textarea id="mn-audit" class="mn-textarea" placeholder="Website audit findings and recommendations..."></textarea>
+          <!-- S5: Work Carried Out -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#C55A11" onclick="mnToggle('mn-s5')"><span class="mn-sn">05</span><span class="mn-st">Work Carried Out This Month</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s5">
+              <div class="mn-fg"><textarea id="mn-tasks" class="mn-textarea" rows="5" placeholder="List SEO and marketing tasks carried out this month..."></textarea></div>
             </div>
+          </div>
 
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">Screenshots</span>
-              <label class="mn-upload-area">
-                <div style="font-size:13px;color:#888">&#x1F4CE; Click to upload screenshots (PNG, JPG)</div>
-                <input type="file" id="mn-screenshots-input" accept="image/*" multiple style="display:none" onchange="mnHandleFileUpload(event,'screenshots')">
-              </label>
-              <div id="mn-screenshots-list" class="mn-upload-row" data-urls="[]"></div>
+          <!-- S6: Google Search Console -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#375623" onclick="mnToggle('mn-s6')"><span class="mn-sn">06</span><span class="mn-st">Google Search Console</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s6">
+              <div class="mn-fg"><div class="mn-fl" style="color:#1e40af">SC Findings (from Marketing Review)</div><div id="mn-sc-auto" style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px;border-radius:4px;font-size:13px;color:#555;line-height:1.6"><em>No SC data selected yet — select findings in Marketing Review.</em></div></div>
+              <div class="mn-fg"><div class="mn-fl">Indexing issues</div><div class="mn-fh">Note count and change vs last month.</div><textarea id="mn-sc-indexing" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Core Web Vitals (CWV)</div><div class="mn-fh">Number of Poor URLs. Any change? Dev team action needed?</div><textarea id="mn-sc-cwv" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">HTTPS issues</div><textarea id="mn-sc-https" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Performance — top queries</div><div class="mn-fh">Keyword movements, new queries appearing, CTR changes.</div><textarea id="mn-sc-queries" class="mn-textarea" rows="3"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Actions for staff / dev team</div><textarea id="mn-sc-actions" class="mn-textarea" rows="3"></textarea></div>
             </div>
+          </div>
 
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">WordPress Tools Site Health</span>
-              <label class="mn-upload-area">
-                <div style="font-size:13px;color:#888">&#x1F4CE; Click to upload site health report (image or PDF)</div>
-                <input type="file" id="mn-wphealth-input" accept="image/*,.pdf" style="display:none" onchange="mnHandleFileUpload(event,'wp_health')">
-              </label>
-              <div id="mn-wphealth-list" class="mn-upload-row" data-urls="[]"></div>
+          <!-- S7: Keywords -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#375623" onclick="mnToggle('mn-s7')"><span class="mn-sn">07</span><span class="mn-st">SE Ranking: Keywords &amp; Positions</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s7">
+              <div class="mn-fg">
+                <div class="mn-fl" style="margin-bottom:5px">Focus keywords this month</div>
+                <div style="overflow-x:auto"><table class="mn-tbl"><thead><tr><th>Keyword</th><th>Current position</th><th>Target position</th><th>In AI Overview?</th></tr></thead><tbody id="mn-kw-body"></tbody></table></div>
+              </div>
+              <div class="mn-fg"><div class="mn-fl">Notable movers</div><div class="mn-fh">Keywords that have significantly shifted position this month.</div><textarea id="mn-kw-movers" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">AI Overview appearances</div><div class="mn-fh">Which keywords is the site appearing in Google AI Overviews for?</div><textarea id="mn-kw-ai" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">SERP features observed</div><div class="mn-fh">Local pack, Reviews, Video, People Also Ask, Images.</div><textarea id="mn-kw-serp" class="mn-textarea" rows="2"></textarea></div>
             </div>
+          </div>
 
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">Upselling Opportunities</span>
-              <textarea id="mn-upselling" class="mn-textarea" placeholder="Potential services or upgrades to discuss with the client..."></textarea>
+          <!-- S8: Website Audit -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#375623" onclick="mnToggle('mn-s8')"><span class="mn-sn">08</span><span class="mn-st">Website Audit (SE Ranking)</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s8">
+              <div class="mn-fg">
+                <div style="overflow-x:auto"><table class="mn-tbl"><thead><tr><th style="width:38%">Metric</th><th>This month</th><th>Last month</th><th>Trend</th></tr></thead><tbody id="mn-audit-body"></tbody></table></div>
+              </div>
+              <div class="mn-fg"><div class="mn-fl">Priority issues to fix this month</div><div class="mn-fh">Pick 2–3 top issues. Assign to staff or dev team.</div><textarea id="mn-audit-priority" class="mn-textarea" rows="3"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Screenshots</div><label class="mn-upload-area"><div style="font-size:13px;color:#888">&#x1F4CE; Click to upload screenshots (PNG, JPG)</div><input type="file" id="mn-screenshots-input" accept="image/*" multiple style="display:none" onchange="mnHandleFileUpload(event,'screenshots')"></label><div id="mn-screenshots-list" class="mn-upload-row" data-urls="[]"></div></div>
+              <div class="mn-fg"><div class="mn-fl">WordPress Site Health</div><label class="mn-upload-area"><div style="font-size:13px;color:#888">&#x1F4CE; Click to upload site health report (image or PDF)</div><input type="file" id="mn-wphealth-input" accept="image/*,.pdf" style="display:none" onchange="mnHandleFileUpload(event,'wp_health')"></label><div id="mn-wphealth-list" class="mn-upload-row" data-urls="[]"></div></div>
             </div>
+          </div>
 
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">Main Competitors</span>
-              <textarea id="mn-competitors" class="mn-textarea" placeholder="Key competitor information and analysis..."></textarea>
+          <!-- S9: AI & Schema -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#7030A0" onclick="mnToggle('mn-s9')"><span class="mn-sn">09</span><span class="mn-st">AI Overview &amp; Schema</span><span class="mn-sbadge">AI / Schema</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s9">
+              <div class="mn-fg"><div class="mn-fl">AI Overview visibility</div><div class="mn-fh">Is the site appearing in Google AI Overviews? For which queries?</div><textarea id="mn-ai-visibility" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Schema implemented this month</div><textarea id="mn-schema-done" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Schema still needed</div><textarea id="mn-schema-needed" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Schema validation status</div><div class="mn-fh">Check Google Rich Results Test. Any errors or warnings?</div><textarea id="mn-schema-validation" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">ChatGPT / Perplexity / Bing AI visibility</div><textarea id="mn-ai-other" class="mn-textarea" rows="2"></textarea></div>
             </div>
+          </div>
 
-            <div class="mn-field">
-              <span class="mn-section-label" style="color:var(--navy)">Comments</span>
-              <textarea id="mn-comments" class="mn-textarea" placeholder="Any additional notes or comments..."></textarea>
+          <!-- S10: Planned Work -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#C55A11" onclick="mnToggle('mn-s10')"><span class="mn-sn">10</span><span class="mn-st">Planned Work for Next Month</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s10">
+              <div class="mn-fg"><textarea id="mn-planned" class="mn-textarea" rows="4" placeholder="What is planned for next month?"></textarea></div>
             </div>
+          </div>
 
-            <div style="display:flex;gap:10px;margin-top:4px">
-              <button class="seo-btn" style="background:#6b7280" onclick="mnExportPDF()">Export PDF</button>
-              <button class="seo-btn" id="mn-save-btn" onclick="mnSave()">Save</button>
+          <!-- S11: Growth & Admin -->
+          <div class="mn-section">
+            <div class="mn-sh" style="background:#4B5563" onclick="mnToggle('mn-s11')"><span class="mn-sn">11</span><span class="mn-st">Growth, Upselling &amp; Admin</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sb" id="mn-s11">
+              <div class="mn-fg"><div class="mn-fl">Upselling opportunities</div><div class="mn-fh">Additional services: PPC, GBP management, video content…</div><textarea id="mn-upselling" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Main competitors to watch</div><textarea id="mn-competitors" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">New content / keyword opportunities</div><textarea id="mn-content-opps" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Toxic links</div><div class="mn-fh">Remove any with a score above 30. Note action taken.</div><textarea id="mn-toxic-links" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Client communication</div><div class="mn-fh">Date of last contact. Face-to-face meeting scheduled? Aim for at least 2 per year.</div><textarea id="mn-client-comms" class="mn-textarea" rows="2"></textarea></div>
+              <div class="mn-fg"><div class="mn-fl">Any other notes</div><textarea id="mn-comments" class="mn-textarea" rows="3"></textarea></div>
             </div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:10px;padding-bottom:20px">
+            <button class="seo-btn" style="background:#6b7280" onclick="mnExportPDF()">Export PDF</button>
+            <button class="seo-btn" id="mn-save-btn" onclick="mnSave()">Save</button>
           </div>
         </div>
       </div>
@@ -4404,6 +4525,114 @@ function renderMeetingNotes() {
 }
 
 let _mnViewingEmail = null;
+
+const MN_CMP_METRICS = ['Health score','Organic sessions','Organic clicks (GSC)','Impressions (GSC)','Avg. position (GSC)','Keywords in top 3','Keywords in top 10','Backlinks','Domain Trust','3XX redirects','Pages not indexed','CWV poor URLs'];
+const MN_AUDIT_METRICS = ['Health score','Pages crawled','3XX redirects','Internal links to 3XX','Description missing','H1 tag missing','External links to 4XX','CSS not minified','Domain Trust','Backlinks','Referring domains'];
+const MN_RAG = {'On track':'#dcfce7','Behind':'#fef9c3','At risk':'#fee2e2','Achieved':'#dbeafe','On hold':'#f3f4f6'};
+
+function mnToggle(id) {
+  const body = document.getElementById(id);
+  const head = body?.previousElementSibling;
+  if (!body) return;
+  const open = body.classList.contains('mn-open');
+  body.classList.toggle('mn-open', !open);
+  head?.classList.toggle('mn-open', !open);
+}
+
+function mnApplyRag(sel) {
+  sel.style.background = MN_RAG[sel.value] || 'transparent';
+  sel.style.fontWeight = sel.value ? '600' : '400';
+}
+
+function mnAddGoalRow(data) {
+  data = data || ['','','','',''];
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><textarea rows="2" placeholder="Goal…">${data[0]}</textarea></td>
+    <td><input type="text" placeholder="e.g. Position 1-3" value="${data[1]}"></td>
+    <td><select onchange="mnApplyRag(this)"><option value="">-</option>${['On track','Behind','At risk','Achieved','On hold'].map(s=>`<option${data[2]===s?' selected':''}>${s}</option>`).join('')}</select></td>
+    <td><textarea rows="2" placeholder="Notes…">${data[3]}</textarea></td>
+    <td><input type="text" placeholder="e.g. Jun 2026" value="${data[4]}"></td>`;
+  document.getElementById('mn-goals-body')?.appendChild(tr);
+  mnApplyRag(tr.querySelector('select'));
+}
+
+function mnBuildCmpTable(data) {
+  const tbody = document.getElementById('mn-cmp-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  MN_CMP_METRICS.forEach(m => {
+    const row = data?.[m] || ['','','',''];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="mn-rl">${m}</td>
+      <td><input type="text" placeholder="-" value="${row[0]||''}"></td>
+      <td><input type="text" placeholder="-" value="${row[1]||''}"></td>
+      <td><input type="text" placeholder="-" value="${row[2]||''}"></td>
+      <td><select><option value="">-</option>${['↑ Up','↓ Down','→ Same'].map(t=>`<option${row[3]===t?' selected':''}>${t}</option>`).join('')}</select></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function mnBuildKwTable(rows) {
+  const tbody = document.getElementById('mn-kw-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const defaults = rows?.length ? rows : [['','',''],['','',''],['','',''],['','',''],['','',''],['','','']];
+  defaults.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input type="text" placeholder="Keyword…" value="${r[0]||''}"></td>
+      <td><input type="text" placeholder="e.g. 3" value="${r[1]||''}"></td>
+      <td><input type="text" placeholder="e.g. Top 3" value="${r[2]||''}"></td>
+      <td><select><option value="">-</option>${['Yes','No','New','Lost'].map(o=>`<option${r[3]===o?' selected':''}>${o}</option>`).join('')}</select></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function mnBuildAuditTable(rows) {
+  const tbody = document.getElementById('mn-audit-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  MN_AUDIT_METRICS.forEach((metric, i) => {
+    const r = rows?.[i] || ['',''];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="mn-rl">${metric}</td>
+      <td><input type="text" placeholder="-" value="${r[0]||''}"></td>
+      <td><input type="text" placeholder="-" value="${r[1]||''}"></td>
+      <td><select><option value="">-</option>${['↑ Up','↓ Down','→ Same'].map(o=>`<option${r[2]===o?' selected':''}>${o}</option>`).join('')}</select></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function mnCollectGoals() {
+  return [...document.querySelectorAll('#mn-goals-body tr')].map(tr => {
+    const c = tr.querySelectorAll('td');
+    return [c[0]?.querySelector('textarea')?.value||'', c[1]?.querySelector('input')?.value||'', c[2]?.querySelector('select')?.value||'', c[3]?.querySelector('textarea')?.value||'', c[4]?.querySelector('input')?.value||''];
+  });
+}
+
+function mnCollectCmp() {
+  const data = {};
+  document.querySelectorAll('#mn-cmp-body tr').forEach((tr, i) => {
+    const metric = MN_CMP_METRICS[i];
+    if (!metric) return;
+    const els = tr.querySelectorAll('input, select');
+    data[metric] = [els[0]?.value||'', els[1]?.value||'', els[2]?.value||'', els[3]?.value||''];
+  });
+  return data;
+}
+
+function mnCollectKw() {
+  return [...document.querySelectorAll('#mn-kw-body tr')].map(tr => {
+    const els = tr.querySelectorAll('input, select');
+    return [els[0]?.value||'', els[1]?.value||'', els[2]?.value||'', els[3]?.value||''];
+  });
+}
+
+function mnCollectAudit() {
+  return [...document.querySelectorAll('#mn-audit-body tr')].map(tr => {
+    const els = tr.querySelectorAll('input, select');
+    return [els[0]?.value||'', els[1]?.value||'', els[2]?.value||''];
+  });
+}
 
 function mnSelectClient(id, name) {
   _mnCurrentClientId = id;
@@ -4467,36 +4696,89 @@ async function mnLoad() {
   const clientId = _mnCurrentClientId;
   const month = document.getElementById('mn-month')?.value;
   if (!clientId || !month) return;
-  // Clear all fields
-  ['mn-activity','mn-tasks','mn-planned','mn-keywords','mn-audit','mn-upselling','mn-competitors','mn-comments','mn-date'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-  document.querySelectorAll('input[name="mn-checklist"]').forEach(r => r.checked = false);
+  // Clear simple text fields
+  ['mn-activity','mn-tasks','mn-planned','mn-upselling','mn-competitors','mn-comments','mn-date',
+   'mn-meeting-type','mn-form-check','mn-goals-summary','mn-cmp-notes',
+   'mn-biz-priorities','mn-biz-feedback','mn-sc-indexing','mn-sc-cwv','mn-sc-https','mn-sc-queries','mn-sc-actions',
+   'mn-kw-movers','mn-kw-ai','mn-kw-serp','mn-audit-priority',
+   'mn-ai-visibility','mn-schema-done','mn-schema-needed','mn-schema-validation','mn-ai-other',
+   'mn-content-opps','mn-toxic-links','mn-client-comms','mn-mh1','mn-mh2','mn-mh3'
+  ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('mn-goals-body') && (document.getElementById('mn-goals-body').innerHTML = '');
+  // Reset meeting format
+  const fmtEl = document.getElementById('mn-meeting-format');
+  if (fmtEl) fmtEl.selectedIndex = 0;
   const scDiv = document.getElementById('mn-sc-auto');
-  if (scDiv) scDiv.innerHTML = '<em>No SC data selected yet &mdash; Sarah selects URLs in Marketing Review.</em>';
+  if (scDiv) scDiv.innerHTML = '<em>No SC data selected yet — select findings in Marketing Review.</em>';
   ['mn-screenshots-list','mn-wphealth-list'].forEach(id => {
     const el = document.getElementById(id); if (el) { el.innerHTML = ''; el.dataset.urls = '[]'; }
   });
+  // Build tables with empty defaults
+  mnBuildCmpTable(null);
+  mnBuildKwTable(null);
+  mnBuildAuditTable(null);
   // Load saved note for this user
   const note = await loadMeetingNoteData(month, clientId);
   if (note) {
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val||''; };
-    set('mn-activity',  note.client_activity);
-    set('mn-tasks',     note.tasks_carried_out);
-    set('mn-planned',   note.planned_work);
-    set('mn-keywords',  note.focus_keywords);
-    set('mn-audit',     note.website_audit);
-    set('mn-upselling', note.upselling);
+    set('mn-activity',   note.client_activity);
+    set('mn-tasks',      note.tasks_carried_out);
+    set('mn-planned',    note.planned_work);
+    set('mn-upselling',  note.upselling);
     set('mn-competitors',note.competitors);
-    set('mn-comments',  note.comments);
-    set('mn-date',      note.meeting_date);
-    if (note.checklist_status) {
-      const r = document.querySelector(`input[name="mn-checklist"][value="${note.checklist_status}"]`);
-      if (r) r.checked = true;
-    }
+    set('mn-date',       note.meeting_date);
     if (note.sc_tasks && scDiv) scDiv.innerHTML = note.sc_tasks;
     if (note.screenshots) mnRenderFileList('mn-screenshots-list', note.screenshots);
     if (note.wp_health)   mnRenderFileList('mn-wphealth-list',   note.wp_health);
+    // Load extended data (stored as JSON in comments field v2, or plain text in legacy)
+    let comments = note.comments || '';
+    let ext = null;
+    try { const p = JSON.parse(note.comments); if (p && p._v === 2) { comments = p.comments||''; ext = p.ext||{}; } } catch(_) {}
+    set('mn-comments', comments);
+    if (ext) {
+      set('mn-meeting-type',      ext.meeting_type);
+      set('mn-form-check',        ext.form_check);
+      set('mn-goals-summary',     ext.goals_summary);
+      set('mn-mh1',               ext.cmp_months?.[0]);
+      set('mn-mh2',               ext.cmp_months?.[1]);
+      set('mn-mh3',               ext.cmp_months?.[2]);
+      set('mn-cmp-notes',         ext.cmp_notes);
+      set('mn-biz-priorities',    ext.biz_priorities);
+      set('mn-biz-feedback',      ext.biz_feedback);
+      set('mn-sc-indexing',       ext.sc_indexing);
+      set('mn-sc-cwv',            ext.sc_cwv);
+      set('mn-sc-https',          ext.sc_https);
+      set('mn-sc-queries',        ext.sc_queries);
+      set('mn-sc-actions',        ext.sc_actions);
+      set('mn-kw-movers',         ext.kw_movers);
+      set('mn-kw-ai',             ext.kw_ai);
+      set('mn-kw-serp',           ext.kw_serp);
+      set('mn-audit-priority',    ext.audit_priority);
+      set('mn-ai-visibility',     ext.ai_visibility);
+      set('mn-schema-done',       ext.schema_done);
+      set('mn-schema-needed',     ext.schema_needed);
+      set('mn-schema-validation', ext.schema_validation);
+      set('mn-ai-other',          ext.ai_other);
+      set('mn-content-opps',      ext.content_opps);
+      set('mn-toxic-links',       ext.toxic_links);
+      set('mn-client-comms',      ext.client_comms);
+      if (document.getElementById('mn-meeting-format') && ext.meeting_format) {
+        document.getElementById('mn-meeting-format').value = ext.meeting_format;
+      }
+      // Rebuild tables from saved data
+      if (ext.goals?.length) { document.getElementById('mn-goals-body').innerHTML=''; ext.goals.forEach(r => mnAddGoalRow(r)); }
+      if (ext.cmp_data) mnBuildCmpTable(ext.cmp_data);
+      if (ext.kw_rows) mnBuildKwTable(ext.kw_rows);
+      if (ext.audit_rows) mnBuildAuditTable(ext.audit_rows);
+    }
+    // Legacy: load old keyword/audit text fields if they exist and no ext data
+    if (!ext) {
+      set('mn-kw-movers', note.focus_keywords);
+      set('mn-audit-priority', note.website_audit);
+    }
+  } else {
+    mnBuildCmpTable(null); mnBuildKwTable(null); mnBuildAuditTable(null);
+    mnAddGoalRow(); mnAddGoalRow(); mnAddGoalRow();
   }
   // Auto-populate SC tasks from Sarah's findings selections
   const selections = await loadScSelections(month, clientId);
@@ -4515,17 +4797,29 @@ async function mnSave() {
   const month = document.getElementById('mn-month')?.value;
   if (!clientId || !month) { showSeoMsg('mn-status', 'No client selected.', 'error'); return; }
   const get = id => document.getElementById(id)?.value || '';
+  // Collect extended structured data
+  const ext = {
+    meeting_type: get('mn-meeting-type'), meeting_format: get('mn-meeting-format'), form_check: get('mn-form-check'),
+    goals: mnCollectGoals(), goals_summary: get('mn-goals-summary'),
+    cmp_months: [get('mn-mh1'), get('mn-mh2'), get('mn-mh3')], cmp_data: mnCollectCmp(), cmp_notes: get('mn-cmp-notes'),
+    biz_priorities: get('mn-biz-priorities'), biz_feedback: get('mn-biz-feedback'),
+    sc_indexing: get('mn-sc-indexing'), sc_cwv: get('mn-sc-cwv'), sc_https: get('mn-sc-https'), sc_queries: get('mn-sc-queries'), sc_actions: get('mn-sc-actions'),
+    kw_rows: mnCollectKw(), kw_movers: get('mn-kw-movers'), kw_ai: get('mn-kw-ai'), kw_serp: get('mn-kw-serp'),
+    audit_rows: mnCollectAudit(), audit_priority: get('mn-audit-priority'),
+    ai_visibility: get('mn-ai-visibility'), schema_done: get('mn-schema-done'), schema_needed: get('mn-schema-needed'), schema_validation: get('mn-schema-validation'), ai_other: get('mn-ai-other'),
+    content_opps: get('mn-content-opps'), toxic_links: get('mn-toxic-links'), client_comms: get('mn-client-comms'),
+  };
   const fields = {
     meeting_date:     get('mn-date'),
     client_activity:  get('mn-activity'),
     tasks_carried_out:get('mn-tasks'),
     planned_work:     get('mn-planned'),
-    checklist_status: document.querySelector('input[name="mn-checklist"]:checked')?.value || 'pending',
-    focus_keywords:   get('mn-keywords'),
-    website_audit:    get('mn-audit'),
+    checklist_status: 'complete',
+    focus_keywords:   '',
+    website_audit:    '',
     upselling:        get('mn-upselling'),
     competitors:      get('mn-competitors'),
-    comments:         get('mn-comments'),
+    comments:         JSON.stringify({ _v: 2, comments: get('mn-comments'), ext }),
     sc_tasks:         document.getElementById('mn-sc-auto')?.innerHTML || '',
     screenshots:      document.getElementById('mn-screenshots-list')?.dataset.urls || '[]',
     wp_health:        document.getElementById('mn-wphealth-list')?.dataset.urls  || '[]'
