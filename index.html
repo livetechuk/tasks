@@ -3886,13 +3886,22 @@ async function mrInspect() {
     }
     if (!urlsToInspect.length) { showSeoMsg('mr-msg', 'Could not fetch sitemap. Check the GSC Property URL.', 'error'); return; }
 
-    if (btn) btn.textContent = `Inspecting ${Math.min(urlsToInspect.length, 1000)} of ${urlsToInspect.length} URLs...`;
-    const inspectRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/gsc-inspect', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ siteUrl: gscProperty, urls: urlsToInspect })
-    });
-    if (!inspectRes.ok) throw new Error(`GSC error ${inspectRes.status}`);
-    const inspected = await inspectRes.json();
+    // Cloudflare Workers free plan allows 50 subrequests per invocation
+    // (1 used for Google auth token). Batch into 45-URL chunks from the frontend.
+    const CHUNK = 45;
+    const allInspected = [];
+    for (let i = 0; i < urlsToInspect.length; i += CHUNK) {
+      const chunk = urlsToInspect.slice(i, i + CHUNK);
+      if (btn) btn.textContent = `Inspecting ${Math.min(i + CHUNK, urlsToInspect.length)} of ${urlsToInspect.length} URLs...`;
+      const inspectRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/gsc-inspect', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteUrl: gscProperty, urls: chunk })
+      });
+      if (!inspectRes.ok) throw new Error(`GSC error ${inspectRes.status}`);
+      const chunkResults = await inspectRes.json();
+      allInspected.push(...chunkResults);
+    }
+    const inspected = allInspected;
     const ok = inspected.filter(i => !i.error);
     const errors = inspected.filter(i => i.error);
 
