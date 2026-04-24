@@ -664,12 +664,12 @@
   .mn-tbl td input, .mn-tbl td select, .mn-tbl td textarea { width:100%; border:none; background:transparent; padding:6px 9px; font-size:12px; color:#1a1a1a; font-family:inherit; }
   .mn-tbl td textarea { resize:none; min-height:34px; border-radius:0; }
   .mn-tbl td input:focus, .mn-tbl td select:focus, .mn-tbl td textarea:focus { outline:none; background:#fffbf0; box-shadow:inset 0 0 0 2px #2a6b9a; }
-  .mn-tbl.mn-goals th { background:var(--navy); color:#fff; border-color:#1a4270; }
-  .mn-tbl.mn-cmp th.mn-m1 { background:#1F4E79; color:#fff; border-color:#1a4270; }
-  .mn-tbl.mn-cmp th.mn-m2 { background:#2d6ea8; color:#fff; }
-  .mn-tbl.mn-cmp th.mn-m3 { background:#3d8fd4; color:#fff; }
-  .mn-tbl.mn-cmp th.mn-trend { background:#375623; color:#fff; }
-  .mn-tbl.mn-cmp input.mn-mh { background:transparent!important; color:#fff!important; font-size:11px!important; font-weight:700; padding:0!important; box-shadow:none!important; width:100%; font-family:inherit; }
+  .mn-tbl.mn-goals th { background:var(--navy); color:#fff; border-color:rgba(255,255,255,0.15); }
+  .mn-tbl.mn-cmp th.mn-m1 { background:var(--navy); color:#fff; border-color:rgba(255,255,255,0.15); }
+  .mn-tbl.mn-cmp th.mn-m2 { background:#2a2870; color:#fff; }
+  .mn-tbl.mn-cmp th.mn-m3 { background:#3d3b9a; color:#fff; }
+  .mn-tbl.mn-cmp th.mn-trend { background:#1a5c3e; color:#fff; }
+  .mn-tbl.mn-cmp input.mn-mh { background:transparent!important; color:#fff!important; font-size:12px!important; font-weight:600; padding:4px 6px!important; box-shadow:none!important; border-bottom:1px dashed rgba(255,255,255,0.4)!important; width:100%; font-family:inherit; }
   @media (max-width: 700px) { .mn-layout { flex-direction: column; } .mn-sidebar { width: auto; position: static; max-height: none; } }
 </style>
 <!-- Microsoft Authentication Library -->
@@ -4387,7 +4387,7 @@ function renderMeetingNotes() {
 
           <!-- S1: Meeting Information -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#1F4E79" onclick="mnToggle('mn-s1')"><span class="mn-sn">01</span><span class="mn-st">Meeting Information</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:var(--navy)" onclick="mnToggle('mn-s1')"><span class="mn-sn">01</span><span class="mn-st">Meeting Information</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s1">
               <div class="mn-fg"><div class="mn-2col">
                 <div><div class="mn-fl">Meeting type</div><input type="text" id="mn-meeting-type" class="mn-textarea" style="min-height:0;padding:7px 10px" placeholder="e.g. Monthly review"></div>
@@ -4399,7 +4399,7 @@ function renderMeetingNotes() {
 
           <!-- S2: Client Goals -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#1F4E79" onclick="mnToggle('mn-s2')"><span class="mn-sn">02</span><span class="mn-st">Client Goals &amp; Progress</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:var(--navy)" onclick="mnToggle('mn-s2')"><span class="mn-sn">02</span><span class="mn-st">Client Goals &amp; Progress</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s2">
               <div class="mn-fg">
                 <div class="mn-fl" style="margin-bottom:5px">Agreed goals — update status each month</div>
@@ -4413,10 +4413,13 @@ function renderMeetingNotes() {
 
           <!-- S3: Month-on-Month -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#1a6b3c" onclick="mnToggle('mn-s3')"><span class="mn-sn">03</span><span class="mn-st">Month-on-Month Performance</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:#1a5c3e" onclick="mnToggle('mn-s3')"><span class="mn-sn">03</span><span class="mn-st">Month-on-Month Performance</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s3">
               <div class="mn-fg">
-                <div class="mn-fh" style="margin-bottom:8px">Click month headings to rename them.</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                  <span class="mn-fh" style="margin-bottom:0">Click month headings to rename them.</span>
+                  <button onclick="mnAutoFillCmp(this)" style="font-size:12px;padding:4px 12px;border:1px solid #d1d5db;border-radius:6px;background:#f3f4f6;color:#374151;cursor:pointer;font-family:inherit;white-space:nowrap">&#x26A1; Auto-fill from SC data</button>
+                </div>
                 <div style="overflow-x:auto"><table class="mn-tbl mn-cmp"><thead><tr><th style="width:32%">Metric</th><th class="mn-m1"><input class="mn-mh" id="mn-mh1" placeholder="This month"></th><th class="mn-m2"><input class="mn-mh" id="mn-mh2" placeholder="Last month"></th><th class="mn-m3"><input class="mn-mh" id="mn-mh3" placeholder="2 months ago"></th><th class="mn-trend" style="width:11%">Trend</th></tr></thead><tbody id="mn-cmp-body"></tbody></table></div>
               </div>
               <div class="mn-fg"><div class="mn-fl">Key observations this month</div><textarea id="mn-cmp-notes" class="mn-textarea" rows="3" placeholder="What do the numbers tell you? Patterns, surprises, things to flag?"></textarea></div>
@@ -4425,7 +4428,7 @@ function renderMeetingNotes() {
 
           <!-- S4: Client Business Update -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#C55A11" onclick="mnToggle('mn-s4')"><span class="mn-sn">04</span><span class="mn-st">Client Business Update</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:var(--coral)" onclick="mnToggle('mn-s4')"><span class="mn-sn">04</span><span class="mn-st">Client Business Update</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s4">
               <div class="mn-fg"><div class="mn-fl">What has the client been up to this month?</div><div class="mn-fh">New services, campaigns, seasonal focus, team changes…</div><textarea id="mn-activity" class="mn-textarea" rows="3" placeholder="Describe recent client and business activity..."></textarea></div>
               <div class="mn-fg"><div class="mn-fl">Key priorities the client has mentioned for next month</div><textarea id="mn-biz-priorities" class="mn-textarea" rows="2" placeholder="e.g. push a new service, upcoming events, new pages needed…"></textarea></div>
@@ -4435,7 +4438,7 @@ function renderMeetingNotes() {
 
           <!-- S5: Work Carried Out -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#C55A11" onclick="mnToggle('mn-s5')"><span class="mn-sn">05</span><span class="mn-st">Work Carried Out This Month</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:var(--coral)" onclick="mnToggle('mn-s5')"><span class="mn-sn">05</span><span class="mn-st">Work Carried Out This Month</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s5">
               <div class="mn-fg"><textarea id="mn-tasks" class="mn-textarea" rows="5" placeholder="List SEO and marketing tasks carried out this month..."></textarea></div>
             </div>
@@ -4443,7 +4446,7 @@ function renderMeetingNotes() {
 
           <!-- S6: Google Search Console -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#375623" onclick="mnToggle('mn-s6')"><span class="mn-sn">06</span><span class="mn-st">Google Search Console</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:#1a5c3e" onclick="mnToggle('mn-s6')"><span class="mn-sn">06</span><span class="mn-st">Google Search Console</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s6">
               <div class="mn-fg"><div class="mn-fl" style="color:#1e40af">SC Findings (from Marketing Review)</div><div id="mn-sc-auto" style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px;border-radius:4px;font-size:13px;color:#555;line-height:1.6"><em>No SC data selected yet — select findings in Marketing Review.</em></div></div>
               <div class="mn-fg"><div class="mn-fl">Indexing issues</div><div class="mn-fh">Note count and change vs last month.</div><textarea id="mn-sc-indexing" class="mn-textarea" rows="2"></textarea></div>
@@ -4456,7 +4459,7 @@ function renderMeetingNotes() {
 
           <!-- S7: Keywords -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#375623" onclick="mnToggle('mn-s7')"><span class="mn-sn">07</span><span class="mn-st">SE Ranking: Keywords &amp; Positions</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:#1a5c3e" onclick="mnToggle('mn-s7')"><span class="mn-sn">07</span><span class="mn-st">SE Ranking: Keywords &amp; Positions</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s7">
               <div class="mn-fg">
                 <div class="mn-fl" style="margin-bottom:5px">Focus keywords this month</div>
@@ -4470,7 +4473,7 @@ function renderMeetingNotes() {
 
           <!-- S8: Website Audit -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#375623" onclick="mnToggle('mn-s8')"><span class="mn-sn">08</span><span class="mn-st">Website Audit (SE Ranking)</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:#1a5c3e" onclick="mnToggle('mn-s8')"><span class="mn-sn">08</span><span class="mn-st">Website Audit (SE Ranking)</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s8">
               <div class="mn-fg">
                 <div style="overflow-x:auto"><table class="mn-tbl"><thead><tr><th style="width:38%">Metric</th><th>This month</th><th>Last month</th><th>Trend</th></tr></thead><tbody id="mn-audit-body"></tbody></table></div>
@@ -4483,7 +4486,7 @@ function renderMeetingNotes() {
 
           <!-- S9: AI & Schema -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#7030A0" onclick="mnToggle('mn-s9')"><span class="mn-sn">09</span><span class="mn-st">AI Overview &amp; Schema</span><span class="mn-sbadge">AI / Schema</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:#6b21a8" onclick="mnToggle('mn-s9')"><span class="mn-sn">09</span><span class="mn-st">AI Overview &amp; Schema</span><span class="mn-sbadge">AI / Schema</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s9">
               <div class="mn-fg"><div class="mn-fl">AI Overview visibility</div><div class="mn-fh">Is the site appearing in Google AI Overviews? For which queries?</div><textarea id="mn-ai-visibility" class="mn-textarea" rows="2"></textarea></div>
               <div class="mn-fg"><div class="mn-fl">Schema implemented this month</div><textarea id="mn-schema-done" class="mn-textarea" rows="2"></textarea></div>
@@ -4495,7 +4498,7 @@ function renderMeetingNotes() {
 
           <!-- S10: Planned Work -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#C55A11" onclick="mnToggle('mn-s10')"><span class="mn-sn">10</span><span class="mn-st">Planned Work for Next Month</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:var(--coral)" onclick="mnToggle('mn-s10')"><span class="mn-sn">10</span><span class="mn-st">Planned Work for Next Month</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s10">
               <div class="mn-fg"><textarea id="mn-planned" class="mn-textarea" rows="4" placeholder="What is planned for next month?"></textarea></div>
             </div>
@@ -4503,7 +4506,7 @@ function renderMeetingNotes() {
 
           <!-- S11: Growth & Admin -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#4B5563" onclick="mnToggle('mn-s11')"><span class="mn-sn">11</span><span class="mn-st">Growth, Upselling &amp; Admin</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" style="background:var(--navy)" onclick="mnToggle('mn-s11')"><span class="mn-sn">11</span><span class="mn-st">Growth, Upselling &amp; Admin</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s11">
               <div class="mn-fg"><div class="mn-fl">Upselling opportunities</div><div class="mn-fh">Additional services: PPC, GBP management, video content…</div><textarea id="mn-upselling" class="mn-textarea" rows="2"></textarea></div>
               <div class="mn-fg"><div class="mn-fl">Main competitors to watch</div><textarea id="mn-competitors" class="mn-textarea" rows="2"></textarea></div>
@@ -4625,6 +4628,54 @@ function mnCollectKw() {
     const els = tr.querySelectorAll('input, select');
     return [els[0]?.value||'', els[1]?.value||'', els[2]?.value||'', els[3]?.value||''];
   });
+}
+
+function mnSetCmpCell(metric, colIdx, value) {
+  const i = MN_CMP_METRICS.indexOf(metric);
+  const row = document.querySelectorAll('#mn-cmp-body tr')[i];
+  if (!row) return;
+  const input = row.querySelectorAll('input')[colIdx];
+  if (input && !input.value) input.value = value;
+}
+
+async function mnAutoFillCmp(btn) {
+  const clientId = _mnCurrentClientId;
+  const month = document.getElementById('mn-month')?.value;
+  if (!clientId || !month) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Filling…'; }
+  try {
+    // Auto-label "This month" header from the selected month
+    const [y, m] = month.split('-');
+    const label = new Date(y, parseInt(m) - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const mh1 = document.getElementById('mn-mh1');
+    if (mh1 && !mh1.value) mh1.value = label;
+
+    // Pull GSC metrics from sc_data table
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/sc_data?client_id=eq.${encodeURIComponent(clientId)}&month=eq.${month}&select=clicks,impressions,position`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows.length) {
+        const clicks = rows.reduce((s, r) => s + (r.clicks || 0), 0);
+        const impr   = rows.reduce((s, r) => s + (r.impressions || 0), 0);
+        const pos    = (rows.reduce((s, r) => s + (r.position || 0), 0) / rows.length).toFixed(1);
+        mnSetCmpCell('Organic clicks (GSC)', 0, clicks);
+        mnSetCmpCell('Impressions (GSC)',     0, impr);
+        mnSetCmpCell('Avg. position (GSC)',   0, pos);
+      }
+    }
+
+    // Pull finding counts from SC inspection (redirects, not-indexed)
+    const selections = await loadScSelections(month, clientId);
+    if (selections.length) {
+      const redirects   = selections.find(s => s.name === 'Page with redirect')?.urls?.length || 0;
+      const notIndexed  = selections.filter(s => s.name !== 'Page with redirect').reduce((s, f) => s + (f.urls?.length || 0), 0);
+      if (redirects)  mnSetCmpCell('3XX redirects',    0, redirects);
+      if (notIndexed) mnSetCmpCell('Pages not indexed', 0, notIndexed);
+    }
+  } catch(e) { console.error('mnAutoFillCmp', e); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '⚡ Auto-fill from SC data'; } }
 }
 
 function mnCollectAudit() {
