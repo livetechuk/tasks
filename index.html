@@ -3886,7 +3886,7 @@ async function mrInspect() {
     }
     if (!urlsToInspect.length) { showSeoMsg('mr-msg', 'Could not fetch sitemap. Check the GSC Property URL.', 'error'); return; }
 
-    if (btn) btn.textContent = `Inspecting ${Math.min(urlsToInspect.length, 200)} of ${urlsToInspect.length} URLs...`;
+    if (btn) btn.textContent = `Inspecting ${Math.min(urlsToInspect.length, 1000)} of ${urlsToInspect.length} URLs...`;
     const inspectRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/gsc-inspect', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ siteUrl: gscProperty, urls: urlsToInspect })
