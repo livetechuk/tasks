@@ -3671,6 +3671,8 @@ function renderMarketingReview() {
                 <label style="font-size:12px;color:#888;font-weight:600">GSC Property</label>
                 <input type="text" id="mr-gsc-property" placeholder="https://example.com/" oninput="mrSaveGscProperty()"
                   style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:210px;color:#555">
+                <button onclick="mrToggleDomainProperty()" id="mr-domain-toggle" title="Toggle between URL-prefix and domain property format (sc-domain:)"
+                  style="font-size:11px;padding:4px 8px;border:0.5px solid #ddd;border-radius:6px;background:#f5f5f5;color:#666;cursor:pointer;font-family:inherit;white-space:nowrap">sc-domain</button>
                 <label style="font-size:12px;color:#888;font-weight:600">Sitemap URL</label>
                 <input type="text" id="mr-sitemap-url" placeholder="auto-detect" oninput="mrSaveSitemapUrl()"
                   style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:200px;color:#555">
@@ -3774,6 +3776,7 @@ function mrSelectClient(id, name) {
   if (document.getElementById('mr-client-heading')) document.getElementById('mr-client-heading').textContent = name;
   mrLoadGscProperty();
   mrLoadSitemapUrl();
+  mrUpdateDomainToggleStyle();
   mrLoadData();
 }
 
@@ -4070,6 +4073,7 @@ function mrMapCoverageState(state) {
 function mrSaveGscProperty() {
   const val = document.getElementById('mr-gsc-property')?.value || '';
   if (_mrCurrentClientId) localStorage.setItem(`mr_gsc_${_mrCurrentClientId}`, val);
+  mrUpdateDomainToggleStyle();
 }
 
 function mrLoadGscProperty() {
@@ -4082,6 +4086,37 @@ function mrLoadGscProperty() {
     val = client?.wp_url || '';
   }
   el.value = val;
+}
+
+function mrToggleDomainProperty() {
+  const el = document.getElementById('mr-gsc-property');
+  if (!el) return;
+  const val = el.value.trim();
+  if (val.startsWith('sc-domain:')) {
+    // Convert sc-domain:example.com → https://www.example.com/
+    const domain = val.replace('sc-domain:', '').trim();
+    el.value = `https://www.${domain}/`;
+  } else {
+    // Convert https://www.example.com/ → sc-domain:example.com
+    try {
+      const host = new URL(val.endsWith('/') ? val : val + '/').hostname.replace(/^www\./, '');
+      el.value = `sc-domain:${host}`;
+    } catch(_) {
+      el.value = `sc-domain:${val.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}`;
+    }
+  }
+  mrSaveGscProperty();
+  mrUpdateDomainToggleStyle();
+}
+
+function mrUpdateDomainToggleStyle() {
+  const btn = document.getElementById('mr-domain-toggle');
+  const val = document.getElementById('mr-gsc-property')?.value || '';
+  if (!btn) return;
+  const isDomain = val.startsWith('sc-domain:');
+  btn.style.background = isDomain ? 'var(--navy)' : '#f5f5f5';
+  btn.style.color = isDomain ? '#fff' : '#666';
+  btn.style.borderColor = isDomain ? 'var(--navy)' : '#ddd';
 }
 
 function mrSaveSitemapUrl() {
