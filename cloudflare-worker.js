@@ -276,9 +276,13 @@ async function collectSitemapUrls(sitemapUrl, collector, depth) {
     const res = await fetch(sitemapUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      console.log(`[sitemap] ${res.status} ${sitemapUrl}`);
+      return;
+    }
     const xml = await res.text();
-    const locs = [...xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gs)].map(m => m[1]);
+    const locs = [...xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gs)].map(m => m[1].trim());
+    console.log(`[sitemap] ${res.status} ${sitemapUrl} → ${locs.length} locs, index=${xml.includes('<sitemapindex')}`);
     if (xml.includes('<sitemapindex')) {
       // Sitemap index — recurse into child sitemaps in batches of 5
       for (let i = 0; i < locs.length; i += 5) {
@@ -288,7 +292,9 @@ async function collectSitemapUrls(sitemapUrl, collector, depth) {
     } else {
       collector.push(...locs.slice(0, 1000 - collector.length));
     }
-  } catch (_) {}
+  } catch (e) {
+    console.log(`[sitemap] error ${sitemapUrl}: ${e.message}`);
+  }
 }
 
 // ── Make.com clients — fetches all records from the Marketing Clients data store ──
