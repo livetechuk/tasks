@@ -3854,44 +3854,67 @@ async function mrRefresh() {
     });
     const upsert = await supabaseWrite('sc_data', records, 'return=minimal');
     if (!upsert.ok) throw new Error(`Supabase insert ${upsert.status}`);
-    // Auto-generate findings via GSC URL Inspection API
+    // Auto-generate findings via GSC URL Inspection — use sitemap for full coverage
     const gscProperty = document.getElementById('mr-gsc-property')?.value?.trim();
     if (gscProperty) {
-      if (btn) btn.textContent = 'Inspecting URLs...';
       try {
+        // Step 1: fetch sitemap URLs (gives us non-indexed pages BigQuery misses)
+        if (btn) btn.textContent = 'Fetching sitemap...';
+        let urlsToInspect = [];
+        const base = gscProperty.replace(/\/$/, '');
+        const sitemapCandidates = [`${base}/sitemap.xml`, `${base}/wp-sitemap.xml`, `${base}/sitemap_index.xml`];
+        for (const smUrl of sitemapCandidates) {
+          try {
+            const smRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
+            if (smRes.ok) {
+              const smData = await smRes.json();
+              if (smData.urls && smData.urls.length > 0) {
+                urlsToInspect = smData.urls;
+                console.log(`[SC] Got ${urlsToInspect.length} URLs from sitemap: ${smUrl}`);
+                break;
+              }
+            }
+          } catch(_) {}
+        }
+        // Fall back to BigQuery URLs if no sitemap found
+        if (!urlsToInspect.length) {
+          urlsToInspect = rows.map(r => r.url);
+          console.log('[SC] No sitemap found, falling back to BQ URLs');
+        }
+
+        // Step 2: inspect all URLs
+        if (btn) btn.textContent = `Inspecting ${urlsToInspect.length} URLs...`;
         const inspectRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/gsc-inspect', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ siteUrl: gscProperty, urls: rows.map(r => r.url) })
+          body: JSON.stringify({ siteUrl: gscProperty, urls: urlsToInspect })
         });
-        const rawText = await inspectRes.text();
-        console.log('GSC inspect HTTP status:', inspectRes.status);
-        console.log('GSC inspect raw response:', rawText);
         if (!inspectRes.ok) {
-          showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspect HTTP error ${inspectRes.status}: ${rawText.slice(0,200)}`, 'error');
+          const errText = await inspectRes.text();
+          showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspect error ${inspectRes.status}: ${errText.slice(0,200)}`, 'error');
         } else {
-          let inspected;
-          try { inspected = JSON.parse(rawText); } catch(e) { inspected = []; }
-          console.log('GSC inspected URLs breakdown:', inspected.map(i => ({ url: i.url, coverageState: i.coverageState, verdict: i.verdict, error: i.error })));
+          const inspected = await inspectRes.json();
           const errors = inspected.filter(i => i.error);
           const ok = inspected.filter(i => !i.error);
+
+          // Group by issue type; skip VALID/indexed pages
           const findingGroups = {};
           ok.forEach(item => {
             if (!item.coverageState) return;
             const finding = mrMapCoverageState(item.coverageState);
-            if (!finding) return;
+            if (!finding) return; // null = indexed/no issue
             if (!findingGroups[finding]) findingGroups[finding] = [];
             findingGroups[finding].push(item.url);
           });
-          const autoFindings = Object.entries(findingGroups).map(([name, urls]) => ({ name, count: null, urls }));
+
+          const autoFindings = Object.entries(findingGroups).map(([name, urls]) => ({ name, count: urls.length, urls }));
           if (autoFindings.length) {
             await saveScSelections(month, clientId, autoFindings);
-            showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) across ${ok.length} URLs inspected.`, 'success');
+            const total = autoFindings.reduce((s, f) => s + f.urls.length, 0);
+            showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) affecting ${total} of ${ok.length} URLs inspected.`, 'success');
           } else if (errors.length === inspected.length && inspected.length > 0) {
-            showSeoMsg('mr-msg', `GSC inspection: all ${errors.length} URL checks failed (error ${errors[0]?.error}). Check service account has Full access to this GSC property.`, 'error');
-          } else if (ok.length === 0) {
-            showSeoMsg('mr-msg', `GSC inspection returned no results — sitemap may not be found. Check console for details.`, 'error');
+            showSeoMsg('mr-msg', `GSC inspection: all ${errors.length} URL checks failed — check the service account has Full access to this GSC property.`, 'error');
           } else {
-            showSeoMsg('mr-msg', `Synced ${records.length} URLs. Inspected ${ok.length} pages — all indexed, no issues in this sample.`, 'info');
+            showSeoMsg('mr-msg', `Inspected ${ok.length} URLs — all indexed, no issues found.`, 'info');
           }
         }
       } catch(e) {
