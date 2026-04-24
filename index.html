@@ -643,11 +643,16 @@
   .mn-group-clients { padding-left: 4px; }
   /* Meeting notes section headers */
   .mn-section { background:#fff; border:0.5px solid #e0ddd6; border-radius:12px; margin-bottom:8px; overflow:hidden; }
-  .mn-sh { display:flex; align-items:center; gap:10px; padding:10px 16px; cursor:pointer; user-select:none; }
-  .mn-sh:hover { filter:brightness(1.06); }
-  .mn-sn { font-size:11px; font-weight:700; color:rgba(255,255,255,0.65); min-width:18px; }
+  .mn-sh { display:flex; align-items:center; gap:10px; padding:10px 16px; cursor:pointer; user-select:none; background:#374151; }
+  .mn-sh:hover { filter:brightness(1.1); }
+  .mn-sn { font-size:11px; font-weight:700; color:rgba(255,255,255,0.55); min-width:18px; }
   .mn-st { font-size:13px; font-weight:600; color:#fff; flex:1; }
-  .mn-sbadge { font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; background:rgba(255,255,255,0.2); color:#fff; flex-shrink:0; }
+  .mn-sbadge { font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; background:rgba(255,255,255,0.18); color:#fff; flex-shrink:0; }
+  .mn-sbadge.mn-badge-staff { background:var(--coral); color:#fff; }
+  .mn-sbadge.mn-badge-mgr { background:var(--navy); color:#fff; }
+  .mn-sc-chip { display:inline-flex;align-items:center;gap:5px;background:#f3f4f6;border:0.5px solid #d1d5db;border-radius:20px;padding:3px 10px;font-size:12px;color:#374151; }
+  .mn-sc-chip-count { background:#374151;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700; }
+  .mn-sc-chip-rm { background:none;border:none;cursor:pointer;color:#9ca3af;font-size:15px;line-height:1;padding:0;margin-left:2px; }
   .mn-chev { font-size:10px; color:rgba(255,255,255,0.6); transition:transform 0.2s; }
   .mn-sh.mn-open .mn-chev { transform:rotate(180deg); }
   .mn-sb { border-top:0.5px solid #e0ddd6; display:none; }
@@ -4387,7 +4392,7 @@ function renderMeetingNotes() {
 
           <!-- S1: Meeting Information -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:var(--navy)" onclick="mnToggle('mn-s1')"><span class="mn-sn">01</span><span class="mn-st">Meeting Information</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s1')"><span class="mn-sn">01</span><span class="mn-st">Meeting Information</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s1">
               <div class="mn-fg"><div class="mn-2col">
                 <div><div class="mn-fl">Meeting type</div><input type="text" id="mn-meeting-type" class="mn-textarea" style="min-height:0;padding:7px 10px" placeholder="e.g. Monthly review"></div>
@@ -4399,7 +4404,7 @@ function renderMeetingNotes() {
 
           <!-- S2: Client Goals -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:var(--navy)" onclick="mnToggle('mn-s2')"><span class="mn-sn">02</span><span class="mn-st">Client Goals &amp; Progress</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s2')"><span class="mn-sn">02</span><span class="mn-st">Client Goals &amp; Progress</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s2">
               <div class="mn-fg">
                 <div class="mn-fl" style="margin-bottom:5px">Agreed goals — update status each month</div>
@@ -4413,12 +4418,11 @@ function renderMeetingNotes() {
 
           <!-- S3: Month-on-Month -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#1a5c3e" onclick="mnToggle('mn-s3')"><span class="mn-sn">03</span><span class="mn-st">Month-on-Month Performance</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s3')"><span class="mn-sn">03</span><span class="mn-st">Month-on-Month Performance</span><span class="mn-sbadge mn-badge-mgr">Manager</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s3">
               <div class="mn-fg">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-                  <span class="mn-fh" style="margin-bottom:0">Click month headings to rename them.</span>
-                  <button onclick="mnAutoFillCmp(this)" style="font-size:12px;padding:4px 12px;border:1px solid #d1d5db;border-radius:6px;background:#f3f4f6;color:#374151;cursor:pointer;font-family:inherit;white-space:nowrap">&#x26A1; Auto-fill from SC data</button>
+                <div style="margin-bottom:8px">
+                  <span class="mn-fh">Click month headings to rename them. Previous month's data carries forward automatically.</span>
                 </div>
                 <div style="overflow-x:auto"><table class="mn-tbl mn-cmp"><thead><tr><th style="width:32%">Metric</th><th class="mn-m1"><input class="mn-mh" id="mn-mh1" placeholder="This month"></th><th class="mn-m2"><input class="mn-mh" id="mn-mh2" placeholder="Last month"></th><th class="mn-m3"><input class="mn-mh" id="mn-mh3" placeholder="2 months ago"></th><th class="mn-trend" style="width:11%">Trend</th></tr></thead><tbody id="mn-cmp-body"></tbody></table></div>
               </div>
@@ -4428,7 +4432,7 @@ function renderMeetingNotes() {
 
           <!-- S4: Client Business Update -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:var(--coral)" onclick="mnToggle('mn-s4')"><span class="mn-sn">04</span><span class="mn-st">Client Business Update</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s4')"><span class="mn-sn">04</span><span class="mn-st">Client Business Update</span><span class="mn-sbadge mn-badge-staff">Staff</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s4">
               <div class="mn-fg"><div class="mn-fl">What has the client been up to this month?</div><div class="mn-fh">New services, campaigns, seasonal focus, team changes…</div><textarea id="mn-activity" class="mn-textarea" rows="3" placeholder="Describe recent client and business activity..."></textarea></div>
               <div class="mn-fg"><div class="mn-fl">Key priorities the client has mentioned for next month</div><textarea id="mn-biz-priorities" class="mn-textarea" rows="2" placeholder="e.g. push a new service, upcoming events, new pages needed…"></textarea></div>
@@ -4438,7 +4442,7 @@ function renderMeetingNotes() {
 
           <!-- S5: Work Carried Out -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:var(--coral)" onclick="mnToggle('mn-s5')"><span class="mn-sn">05</span><span class="mn-st">Work Carried Out This Month</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s5')"><span class="mn-sn">05</span><span class="mn-st">Work Carried Out This Month</span><span class="mn-sbadge mn-badge-staff">Staff</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s5">
               <div class="mn-fg"><textarea id="mn-tasks" class="mn-textarea" rows="5" placeholder="List SEO and marketing tasks carried out this month..."></textarea></div>
             </div>
@@ -4446,20 +4450,67 @@ function renderMeetingNotes() {
 
           <!-- S6: Google Search Console -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#1a5c3e" onclick="mnToggle('mn-s6')"><span class="mn-sn">06</span><span class="mn-st">Google Search Console</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s6')"><span class="mn-sn">06</span><span class="mn-st">Google Search Console</span><span class="mn-sbadge mn-badge-mgr">Manager</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s6">
-              <div class="mn-fg"><div class="mn-fl" style="color:#1e40af">SC Findings (from Marketing Review)</div><div id="mn-sc-auto" style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px;border-radius:4px;font-size:13px;color:#555;line-height:1.6"><em>No SC data selected yet — select findings in Marketing Review.</em></div></div>
-              <div class="mn-fg"><div class="mn-fl">Indexing issues</div><div class="mn-fh">Note count and change vs last month.</div><textarea id="mn-sc-indexing" class="mn-textarea" rows="2"></textarea></div>
-              <div class="mn-fg"><div class="mn-fl">Core Web Vitals (CWV)</div><div class="mn-fh">Number of Poor URLs. Any change? Dev team action needed?</div><textarea id="mn-sc-cwv" class="mn-textarea" rows="2"></textarea></div>
-              <div class="mn-fg"><div class="mn-fl">HTTPS issues</div><textarea id="mn-sc-https" class="mn-textarea" rows="2"></textarea></div>
-              <div class="mn-fg"><div class="mn-fl">Performance — top queries</div><div class="mn-fh">Keyword movements, new queries appearing, CTR changes.</div><textarea id="mn-sc-queries" class="mn-textarea" rows="3"></textarea></div>
+              <!-- SC Findings -->
+              <div class="mn-fg">
+                <div class="mn-fl">SC Findings</div>
+                <div class="mn-fh">Add issue categories with a count. Auto-populated from Marketing Review where available.</div>
+                <div id="mn-sc-findings-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:24px"><em style="color:#aaa;font-size:12px">No findings added yet.</em></div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <select id="mn-sc-finding-sel" class="seo-select" style="flex:1;min-width:180px;font-size:12px">
+                    <option value="">Select finding to add…</option>
+                    ${SC_FINDINGS.map(f => `<option value="${f}">${f}</option>`).join('')}
+                  </select>
+                  <input type="number" id="mn-sc-finding-count" placeholder="Count" min="0"
+                    style="width:76px;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 8px;font-family:inherit;color:#555">
+                  <button onclick="mnAddScFinding()" style="font-size:12px;padding:5px 14px;border:0.5px solid #ddd;border-radius:6px;background:var(--navy);color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap">+ Add</button>
+                </div>
+              </div>
+              <!-- Performance metrics -->
+              <div class="mn-fg">
+                <div class="mn-fl" style="margin-bottom:6px">Performance Metrics</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+                  <div>
+                    <div class="mn-fl" style="font-size:11px;margin-bottom:3px">Organic sessions <span style="font-weight:400;color:#9ca3af">(manual)</span></div>
+                    <input type="number" id="mn-sc-sessions" placeholder="e.g. 1250" min="0"
+                      style="width:100%;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 8px;font-family:inherit;color:#555;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <div class="mn-fl" style="font-size:11px;margin-bottom:3px">Organic clicks <span style="font-weight:400;color:#9ca3af">(auto from SC)</span></div>
+                    <input type="number" id="mn-sc-clicks" placeholder="auto-filled" min="0"
+                      style="width:100%;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 8px;font-family:inherit;color:#555;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <div class="mn-fl" style="font-size:11px;margin-bottom:3px">Impressions <span style="font-weight:400;color:#9ca3af">(auto from SC)</span></div>
+                    <input type="number" id="mn-sc-impressions" placeholder="auto-filled" min="0"
+                      style="width:100%;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 8px;font-family:inherit;color:#555;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <div class="mn-fl" style="font-size:11px;margin-bottom:3px">Avg. position <span style="font-weight:400;color:#9ca3af">(auto from SC)</span></div>
+                    <input type="number" id="mn-sc-position" placeholder="auto-filled" min="0" step="0.1"
+                      style="width:100%;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 8px;font-family:inherit;color:#555;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <div class="mn-fl" style="font-size:11px;margin-bottom:3px">CWV poor URLs <span style="font-weight:400;color:#9ca3af">(manual)</span></div>
+                    <input type="number" id="mn-sc-cwv-count" placeholder="e.g. 12" min="0"
+                      style="width:100%;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 8px;font-family:inherit;color:#555;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <div class="mn-fl" style="font-size:11px;margin-bottom:3px">HTTPS issues <span style="font-weight:400;color:#9ca3af">(manual)</span></div>
+                    <input type="number" id="mn-sc-https-count" placeholder="e.g. 0" min="0"
+                      style="width:100%;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 8px;font-family:inherit;color:#555;box-sizing:border-box">
+                  </div>
+                </div>
+              </div>
+              <!-- Dev team actions -->
               <div class="mn-fg"><div class="mn-fl">Actions for staff / dev team</div><textarea id="mn-sc-actions" class="mn-textarea" rows="3"></textarea></div>
             </div>
           </div>
 
           <!-- S7: Keywords -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#1a5c3e" onclick="mnToggle('mn-s7')"><span class="mn-sn">07</span><span class="mn-st">SE Ranking: Keywords &amp; Positions</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s7')"><span class="mn-sn">07</span><span class="mn-st">SE Ranking: Keywords &amp; Positions</span><span class="mn-sbadge mn-badge-mgr">Manager</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s7">
               <div class="mn-fg">
                 <div class="mn-fl" style="margin-bottom:5px">Focus keywords this month</div>
@@ -4473,7 +4524,7 @@ function renderMeetingNotes() {
 
           <!-- S8: Website Audit -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#1a5c3e" onclick="mnToggle('mn-s8')"><span class="mn-sn">08</span><span class="mn-st">Website Audit (SE Ranking)</span><span class="mn-sbadge">Manager</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s8')"><span class="mn-sn">08</span><span class="mn-st">Website Audit (SE Ranking)</span><span class="mn-sbadge mn-badge-mgr">Manager</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s8">
               <div class="mn-fg">
                 <div style="overflow-x:auto"><table class="mn-tbl"><thead><tr><th style="width:38%">Metric</th><th>This month</th><th>Last month</th><th>Trend</th></tr></thead><tbody id="mn-audit-body"></tbody></table></div>
@@ -4486,7 +4537,7 @@ function renderMeetingNotes() {
 
           <!-- S9: AI & Schema -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:#6b21a8" onclick="mnToggle('mn-s9')"><span class="mn-sn">09</span><span class="mn-st">AI Overview &amp; Schema</span><span class="mn-sbadge">AI / Schema</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s9')"><span class="mn-sn">09</span><span class="mn-st">AI Overview &amp; Schema</span><span class="mn-sbadge">AI / Schema</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s9">
               <div class="mn-fg"><div class="mn-fl">AI Overview visibility</div><div class="mn-fh">Is the site appearing in Google AI Overviews? For which queries?</div><textarea id="mn-ai-visibility" class="mn-textarea" rows="2"></textarea></div>
               <div class="mn-fg"><div class="mn-fl">Schema implemented this month</div><textarea id="mn-schema-done" class="mn-textarea" rows="2"></textarea></div>
@@ -4498,7 +4549,7 @@ function renderMeetingNotes() {
 
           <!-- S10: Planned Work -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:var(--coral)" onclick="mnToggle('mn-s10')"><span class="mn-sn">10</span><span class="mn-st">Planned Work for Next Month</span><span class="mn-sbadge">Staff</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s10')"><span class="mn-sn">10</span><span class="mn-st">Planned Work for Next Month</span><span class="mn-sbadge mn-badge-staff">Staff</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s10">
               <div class="mn-fg"><textarea id="mn-planned" class="mn-textarea" rows="4" placeholder="What is planned for next month?"></textarea></div>
             </div>
@@ -4506,7 +4557,7 @@ function renderMeetingNotes() {
 
           <!-- S11: Growth & Admin -->
           <div class="mn-section">
-            <div class="mn-sh" style="background:var(--navy)" onclick="mnToggle('mn-s11')"><span class="mn-sn">11</span><span class="mn-st">Growth, Upselling &amp; Admin</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
+            <div class="mn-sh" onclick="mnToggle('mn-s11')"><span class="mn-sn">11</span><span class="mn-st">Growth, Upselling &amp; Admin</span><span class="mn-sbadge">Both</span><span class="mn-chev">&#9660;</span></div>
             <div class="mn-sb" id="mn-s11">
               <div class="mn-fg"><div class="mn-fl">Upselling opportunities</div><div class="mn-fh">Additional services: PPC, GBP management, video content…</div><textarea id="mn-upselling" class="mn-textarea" rows="2"></textarea></div>
               <div class="mn-fg"><div class="mn-fl">Main competitors to watch</div><textarea id="mn-competitors" class="mn-textarea" rows="2"></textarea></div>
@@ -4517,8 +4568,9 @@ function renderMeetingNotes() {
             </div>
           </div>
 
-          <div style="display:flex;gap:10px;margin-top:10px;padding-bottom:20px">
-            <button class="seo-btn" style="background:#6b7280" onclick="mnExportPDF()">Export PDF</button>
+          <div id="mn-review-bar" style="margin-top:10px"></div>
+          <div style="display:flex;gap:10px;margin-top:8px;padding-bottom:20px;align-items:center">
+            <button class="seo-btn" style="background:var(--navy)" onclick="mnExportPDF()">Export PDF</button>
             <button class="seo-btn" id="mn-save-btn" onclick="mnSave()">Save</button>
           </div>
         </div>
@@ -4532,6 +4584,156 @@ let _mnViewingEmail = null;
 const MN_CMP_METRICS = ['Health score','Organic sessions','Organic clicks (GSC)','Impressions (GSC)','Avg. position (GSC)','Keywords in top 3','Keywords in top 10','Backlinks','Domain Trust','3XX redirects','Pages not indexed','CWV poor URLs'];
 const MN_AUDIT_METRICS = ['Health score','Pages crawled','3XX redirects','Internal links to 3XX','Description missing','H1 tag missing','External links to 4XX','CSS not minified','Domain Trust','Backlinks','Referring domains'];
 const MN_RAG = {'On track':'#dcfce7','Behind':'#fef9c3','At risk':'#fee2e2','Achieved':'#dbeafe','On hold':'#f3f4f6'};
+
+let _mnScFindings = []; // [{name, count}]
+
+let _mnNoteStatus = 'in_progress'; // 'in_progress' | 'staff_submitted' | 'complete'
+let _mnStatusMeta = {}; // { submitted_by, submitted_at, approved_by, approved_at }
+
+function mnIsManager() {
+  return currentUser === SEO_MARKETING_HEAD || currentUser === 'Holly';
+}
+
+function mnIsViewingOtherStaff() {
+  return !!_mnViewingEmail && _mnViewingEmail !== (currentUser.toLowerCase() + '@livetech.co.uk');
+}
+
+function mnRenderReviewBar() {
+  const bar = document.getElementById('mn-review-bar');
+  if (!bar) return;
+  const st = _mnNoteStatus;
+  const meta = _mnStatusMeta;
+  const fmtDate = ts => ts ? new Date(ts).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
+
+  if (mnIsViewingOtherStaff() && mnIsManager()) {
+    if (st === 'staff_submitted') {
+      bar.innerHTML = `<div style="background:#fef3c7;border:0.5px solid #fbbf24;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:#92400e">&#9203; Submitted for review${meta.submitted_by ? ' by ' + meta.submitted_by : ''}${meta.submitted_at ? ' on ' + fmtDate(meta.submitted_at) : ''}</span>
+        <button onclick="mnApproveNotes(false)" style="font-size:12px;padding:5px 16px;border:none;border-radius:6px;background:var(--navy);color:#fff;cursor:pointer;font-family:inherit;font-weight:600">Approve notes</button>
+      </div>`;
+    } else if (st === 'complete') {
+      bar.innerHTML = `<div style="background:#dcfce7;border:0.5px solid #86efac;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:#166534">&#10003; Approved${meta.approved_by ? ' by ' + meta.approved_by : ''}${meta.approved_at ? ' on ' + fmtDate(meta.approved_at) : ''}</span>
+        <button onclick="mnApproveNotes(true)" style="font-size:12px;padding:5px 16px;border:none;border-radius:6px;background:#6b7280;color:#fff;cursor:pointer;font-family:inherit">Withdraw approval</button>
+      </div>`;
+    } else {
+      bar.innerHTML = '';
+    }
+  } else if (!mnIsViewingOtherStaff()) {
+    if (st === 'complete') {
+      bar.innerHTML = `<div style="background:#dcfce7;border:0.5px solid #86efac;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:600;color:#166534">
+        &#10003; Notes approved${meta.approved_by ? ' by ' + meta.approved_by : ''}${meta.approved_at ? ' on ' + fmtDate(meta.approved_at) : ''}
+      </div>`;
+    } else if (st === 'staff_submitted') {
+      bar.innerHTML = `<div style="background:#fffbeb;border:0.5px solid #fbbf24;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:#92400e">&#9203; Submitted for review &#8212; awaiting manager sign-off</span>
+        <button onclick="mnSubmitToggle(false)" style="font-size:12px;padding:5px 14px;border:0.5px solid #d97706;border-radius:6px;background:transparent;color:#92400e;cursor:pointer;font-family:inherit">Withdraw submission</button>
+      </div>`;
+    } else {
+      bar.innerHTML = `<div style="padding:4px 0">
+        <button onclick="mnSubmitToggle(true)" style="font-size:12px;padding:6px 18px;border:0.5px solid #d1d5db;border-radius:6px;background:#f9fafb;color:#374151;cursor:pointer;font-family:inherit;font-weight:500">Mark notes as complete &amp; notify manager</button>
+      </div>`;
+    }
+  } else {
+    bar.innerHTML = '';
+  }
+  mnUpdateSidebarBadge(_mnCurrentClientId, st);
+}
+
+function mnUpdateSidebarBadge(clientId, status) {
+  const btn = document.querySelector(`#mn-client-list .mn-client-btn[data-id="${clientId}"]`);
+  if (!btn) return;
+  const baseName = btn.dataset.name || btn.textContent.replace(/\s*[&#9203;&#10003;].*$/, '').trim();
+  btn.dataset.name = baseName;
+  if (status === 'complete') btn.textContent = baseName + ' ✓';
+  else if (status === 'staff_submitted') btn.textContent = baseName + ' ⏳';
+  else btn.textContent = baseName;
+}
+
+async function mnSubmitToggle(submit) {
+  const clientId = _mnCurrentClientId;
+  const month = document.getElementById('mn-month')?.value;
+  if (!clientId || !month) return;
+  await mnSave();
+  _mnNoteStatus = submit ? 'staff_submitted' : 'in_progress';
+  if (submit) { _mnStatusMeta.submitted_by = currentUser; _mnStatusMeta.submitted_at = new Date().toISOString(); }
+  else { delete _mnStatusMeta.submitted_by; delete _mnStatusMeta.submitted_at; }
+  const email = currentUser.toLowerCase() + '@livetech.co.uk';
+  const ok = await mnPatchStatus(month, clientId, email, _mnNoteStatus, _mnStatusMeta);
+  if (ok) mnRenderReviewBar();
+  else showSeoMsg('mn-status', 'Error updating status.', 'error');
+}
+
+async function mnApproveNotes(withdraw) {
+  const clientId = _mnCurrentClientId;
+  const month = document.getElementById('mn-month')?.value;
+  if (!clientId || !month || !_mnViewingEmail) return;
+  _mnNoteStatus = withdraw ? 'staff_submitted' : 'complete';
+  if (!withdraw) { _mnStatusMeta.approved_by = currentUser; _mnStatusMeta.approved_at = new Date().toISOString(); }
+  else { delete _mnStatusMeta.approved_by; delete _mnStatusMeta.approved_at; }
+  const ok = await mnPatchStatus(month, clientId, _mnViewingEmail, _mnNoteStatus, _mnStatusMeta);
+  if (ok) mnRenderReviewBar();
+  else showSeoMsg('mn-status', 'Error updating status.', 'error');
+}
+
+async function mnPatchStatus(month, clientId, assignedEmail, status, meta) {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/meeting_notes?month=eq.${encodeURIComponent(month)}&client_id=eq.${encodeURIComponent(clientId)}&assigned_to=eq.${encodeURIComponent(assignedEmail)}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ checklist_status: status, focus_keywords: JSON.stringify(meta) })
+    });
+    return res.ok;
+  } catch(e) { console.error('mnPatchStatus', e); return false; }
+}
+
+async function mnLoadSidebarStatuses(month) {
+  if (!mnIsManager()) return;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/meeting_notes?month=eq.${encodeURIComponent(month)}&select=client_id,checklist_status`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!res.ok) return;
+    const rows = await res.json();
+    const sm = {};
+    rows.forEach(r => {
+      const cur = sm[r.client_id];
+      if (!cur || r.checklist_status === 'complete' || (r.checklist_status === 'staff_submitted' && cur !== 'complete')) sm[r.client_id] = r.checklist_status;
+    });
+    Object.entries(sm).forEach(([id, st]) => mnUpdateSidebarBadge(id, st));
+  } catch(e) { console.error('mnLoadSidebarStatuses', e); }
+}
+
+function mnRenderScFindings() {
+  const container = document.getElementById('mn-sc-findings-chips');
+  if (!container) return;
+  if (!_mnScFindings.length) {
+    container.innerHTML = '<em style="color:#aaa;font-size:12px">No findings added yet.</em>';
+    return;
+  }
+  container.innerHTML = _mnScFindings.map((f, i) =>
+    `<span class="mn-sc-chip">${f.name}${f.count ? `<span class="mn-sc-chip-count">${f.count}</span>` : ''}<button class="mn-sc-chip-rm" onclick="mnRemoveScFinding(${i})">&times;</button></span>`
+  ).join('');
+}
+
+function mnAddScFinding() {
+  const sel = document.getElementById('mn-sc-finding-sel');
+  const countEl = document.getElementById('mn-sc-finding-count');
+  if (!sel?.value) return;
+  const name = sel.value;
+  const count = parseInt(countEl?.value) || 0;
+  const existing = _mnScFindings.find(f => f.name === name);
+  if (existing) { existing.count = count; } else { _mnScFindings.push({ name, count }); }
+  mnRenderScFindings();
+  sel.value = '';
+  if (countEl) countEl.value = '';
+}
+
+function mnRemoveScFinding(i) {
+  _mnScFindings.splice(i, 1);
+  mnRenderScFindings();
+}
 
 function mnToggle(id) {
   const body = document.getElementById(id);
@@ -4740,7 +4942,9 @@ function mnSetReadOnly(readOnly) {
 }
 
 function mnMonthChange() {
+  const month = document.getElementById('mn-month')?.value;
   if (_mnCurrentClientId) mnLoad();
+  if (month) mnLoadSidebarStatuses(month);
 }
 
 async function mnLoad() {
@@ -4750,17 +4954,22 @@ async function mnLoad() {
   // Clear simple text fields
   ['mn-activity','mn-tasks','mn-planned','mn-upselling','mn-competitors','mn-comments','mn-date',
    'mn-meeting-type','mn-form-check','mn-goals-summary','mn-cmp-notes',
-   'mn-biz-priorities','mn-biz-feedback','mn-sc-indexing','mn-sc-cwv','mn-sc-https','mn-sc-queries','mn-sc-actions',
+   'mn-biz-priorities','mn-biz-feedback','mn-sc-actions',
+   'mn-sc-sessions','mn-sc-clicks','mn-sc-impressions','mn-sc-position','mn-sc-cwv-count','mn-sc-https-count',
    'mn-kw-movers','mn-kw-ai','mn-kw-serp','mn-audit-priority',
    'mn-ai-visibility','mn-schema-done','mn-schema-needed','mn-schema-validation','mn-ai-other',
    'mn-content-opps','mn-toxic-links','mn-client-comms','mn-mh1','mn-mh2','mn-mh3'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('mn-goals-body') && (document.getElementById('mn-goals-body').innerHTML = '');
+  _mnScFindings = [];
+  mnRenderScFindings();
+  // Reset review status
+  _mnNoteStatus = 'in_progress';
+  _mnStatusMeta = {};
+  mnRenderReviewBar();
   // Reset meeting format
   const fmtEl = document.getElementById('mn-meeting-format');
   if (fmtEl) fmtEl.selectedIndex = 0;
-  const scDiv = document.getElementById('mn-sc-auto');
-  if (scDiv) scDiv.innerHTML = '<em>No SC data selected yet — select findings in Marketing Review.</em>';
   ['mn-screenshots-list','mn-wphealth-list'].forEach(id => {
     const el = document.getElementById(id); if (el) { el.innerHTML = ''; el.dataset.urls = '[]'; }
   });
@@ -4768,6 +4977,14 @@ async function mnLoad() {
   mnBuildCmpTable(null);
   mnBuildKwTable(null);
   mnBuildAuditTable(null);
+
+  // Month label helper
+  const fmt = (yr, mo) => new Date(yr, mo - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const [cy, cm] = month.split('-').map(Number);
+  const [py, pm] = cm === 1 ? [cy - 1, 12] : [cy, cm - 1];
+  const [p2y, p2m] = pm === 1 ? [py - 1, 12] : [py, pm - 1];
+  const prevMonth = `${py}-${String(pm).padStart(2, '0')}`;
+
   // Load saved note for this user
   const note = await loadMeetingNoteData(month, clientId);
   if (note) {
@@ -4778,9 +4995,12 @@ async function mnLoad() {
     set('mn-upselling',  note.upselling);
     set('mn-competitors',note.competitors);
     set('mn-date',       note.meeting_date);
-    if (note.sc_tasks && scDiv) scDiv.innerHTML = note.sc_tasks;
     if (note.screenshots) mnRenderFileList('mn-screenshots-list', note.screenshots);
     if (note.wp_health)   mnRenderFileList('mn-wphealth-list',   note.wp_health);
+    // Restore review status
+    _mnNoteStatus = note.checklist_status || 'in_progress';
+    try { _mnStatusMeta = JSON.parse(note.focus_keywords || '{}'); } catch(_) { _mnStatusMeta = {}; }
+    mnRenderReviewBar();
     // Load extended data (stored as JSON in comments field v2, or plain text in legacy)
     let comments = note.comments || '';
     let ext = null;
@@ -4796,11 +5016,13 @@ async function mnLoad() {
       set('mn-cmp-notes',         ext.cmp_notes);
       set('mn-biz-priorities',    ext.biz_priorities);
       set('mn-biz-feedback',      ext.biz_feedback);
-      set('mn-sc-indexing',       ext.sc_indexing);
-      set('mn-sc-cwv',            ext.sc_cwv);
-      set('mn-sc-https',          ext.sc_https);
-      set('mn-sc-queries',        ext.sc_queries);
       set('mn-sc-actions',        ext.sc_actions);
+      set('mn-sc-sessions',       ext.sc_sessions);
+      set('mn-sc-clicks',         ext.sc_clicks);
+      set('mn-sc-impressions',    ext.sc_impressions);
+      set('mn-sc-position',       ext.sc_position);
+      set('mn-sc-cwv-count',      ext.sc_cwv_count);
+      set('mn-sc-https-count',    ext.sc_https_count);
       set('mn-kw-movers',         ext.kw_movers);
       set('mn-kw-ai',             ext.kw_ai);
       set('mn-kw-serp',           ext.kw_serp);
@@ -4821,6 +5043,8 @@ async function mnLoad() {
       if (ext.cmp_data) mnBuildCmpTable(ext.cmp_data);
       if (ext.kw_rows) mnBuildKwTable(ext.kw_rows);
       if (ext.audit_rows) mnBuildAuditTable(ext.audit_rows);
+      // Restore saved SC findings
+      if (ext.sc_findings?.length) _mnScFindings = ext.sc_findings.map(f => ({ name: f.name||f, count: f.count||0 }));
     }
     // Legacy: load old keyword/audit text fields if they exist and no ext data
     if (!ext) {
@@ -4828,19 +5052,60 @@ async function mnLoad() {
       set('mn-audit-priority', note.website_audit);
     }
   } else {
-    mnBuildCmpTable(null); mnBuildKwTable(null); mnBuildAuditTable(null);
+    // No saved data — set month labels and carry forward comparison data from previous month
+    document.getElementById('mn-mh1') && (document.getElementById('mn-mh1').value = fmt(cy, cm));
+    document.getElementById('mn-mh2') && (document.getElementById('mn-mh2').value = fmt(py, pm));
+    document.getElementById('mn-mh3') && (document.getElementById('mn-mh3').value = fmt(p2y, p2m));
+    mnBuildKwTable(null); mnBuildAuditTable(null);
     mnAddGoalRow(); mnAddGoalRow(); mnAddGoalRow();
+    // Carry forward comparison table from previous month
+    const prevNote = await loadMeetingNoteData(prevMonth, clientId);
+    if (prevNote) {
+      try {
+        const p = JSON.parse(prevNote.comments);
+        if (p?._v === 2 && p.ext?.cmp_data) {
+          // Shift: prev col0 → this col1, prev col1 → this col2; col0 blank for new entry
+          const carried = {};
+          Object.entries(p.ext.cmp_data).forEach(([metric, row]) => {
+            carried[metric] = ['', row[0]||'', row[1]||'', ''];
+          });
+          mnBuildCmpTable(carried);
+        }
+      } catch(_) {}
+    }
+    // Auto-fill clicks, impressions, position from sc_data
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/sc_data?client_id=eq.${encodeURIComponent(clientId)}&month=eq.${month}&select=clicks,impressions,position`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows.length) {
+          const clicks = rows.reduce((s, r) => s + (r.clicks || 0), 0);
+          const impr   = rows.reduce((s, r) => s + (r.impressions || 0), 0);
+          const pos    = (rows.reduce((s, r) => s + (r.position || 0), 0) / rows.length).toFixed(1);
+          const clicksEl = document.getElementById('mn-sc-clicks');
+          const imprEl   = document.getElementById('mn-sc-impressions');
+          const posEl    = document.getElementById('mn-sc-position');
+          if (clicksEl && !clicksEl.value) clicksEl.value = clicks;
+          if (imprEl   && !imprEl.value)   imprEl.value   = impr;
+          if (posEl    && !posEl.value)     posEl.value    = pos;
+        }
+      }
+    } catch(e) { console.error('GSC metric auto-fill', e); }
   }
-  // Auto-populate SC tasks from Sarah's findings selections
+  // Merge SC findings from Marketing Review (loadScSelections)
   const selections = await loadScSelections(month, clientId);
-  if (selections.length > 0 && scDiv) {
-    const lines = selections.map(s => {
+  if (selections.length) {
+    selections.forEach(s => {
       const name = typeof s === 'string' ? s : s.name;
-      const urls = s.urls?.length ? s.urls.map(u => `<br>&nbsp;&nbsp;&bull; <code style="font-size:11px">${u}</code>`).join('') : '';
-      return `<strong>${name}</strong>${urls}`;
+      const count = s.urls?.length || 0;
+      const existing = _mnScFindings.find(f => f.name === name);
+      if (existing) { if (!existing.count && count) existing.count = count; }
+      else { _mnScFindings.push({ name, count }); }
     });
-    scDiv.innerHTML = lines.join('<br><br>');
   }
+  mnRenderScFindings();
 }
 
 async function mnSave() {
@@ -4854,7 +5119,8 @@ async function mnSave() {
     goals: mnCollectGoals(), goals_summary: get('mn-goals-summary'),
     cmp_months: [get('mn-mh1'), get('mn-mh2'), get('mn-mh3')], cmp_data: mnCollectCmp(), cmp_notes: get('mn-cmp-notes'),
     biz_priorities: get('mn-biz-priorities'), biz_feedback: get('mn-biz-feedback'),
-    sc_indexing: get('mn-sc-indexing'), sc_cwv: get('mn-sc-cwv'), sc_https: get('mn-sc-https'), sc_queries: get('mn-sc-queries'), sc_actions: get('mn-sc-actions'),
+    sc_findings: _mnScFindings, sc_actions: get('mn-sc-actions'),
+    sc_sessions: get('mn-sc-sessions'), sc_clicks: get('mn-sc-clicks'), sc_impressions: get('mn-sc-impressions'), sc_position: get('mn-sc-position'), sc_cwv_count: get('mn-sc-cwv-count'), sc_https_count: get('mn-sc-https-count'),
     kw_rows: mnCollectKw(), kw_movers: get('mn-kw-movers'), kw_ai: get('mn-kw-ai'), kw_serp: get('mn-kw-serp'),
     audit_rows: mnCollectAudit(), audit_priority: get('mn-audit-priority'),
     ai_visibility: get('mn-ai-visibility'), schema_done: get('mn-schema-done'), schema_needed: get('mn-schema-needed'), schema_validation: get('mn-schema-validation'), ai_other: get('mn-ai-other'),
@@ -4865,13 +5131,13 @@ async function mnSave() {
     client_activity:  get('mn-activity'),
     tasks_carried_out:get('mn-tasks'),
     planned_work:     get('mn-planned'),
-    checklist_status: 'complete',
-    focus_keywords:   '',
+    checklist_status: _mnNoteStatus,
+    focus_keywords:   JSON.stringify(_mnStatusMeta),
     website_audit:    '',
     upselling:        get('mn-upselling'),
     competitors:      get('mn-competitors'),
     comments:         JSON.stringify({ _v: 2, comments: get('mn-comments'), ext }),
-    sc_tasks:         document.getElementById('mn-sc-auto')?.innerHTML || '',
+    sc_tasks:         _mnScFindings.map(f => `${f.name}${f.count ? ` (${f.count})` : ''}`).join('; '),
     screenshots:      document.getElementById('mn-screenshots-list')?.dataset.urls || '[]',
     wp_health:        document.getElementById('mn-wphealth-list')?.dataset.urls  || '[]'
   };
@@ -5160,6 +5426,9 @@ async function loadMakeClientsIntoDropdown() {
         ).join('');
       }
       if (_mnCurrentClientId) document.querySelector(`#mn-client-list .mn-client-btn[data-id="${_mnCurrentClientId}"]`)?.classList.add('active');
+      // Load status badges for manager
+      const mnMonth = document.getElementById('mn-month')?.value;
+      if (mnMonth) mnLoadSidebarStatuses(mnMonth);
     } else {
       mnList.innerHTML = '<span style="font-size:13px;color:#aaa">No clients assigned</span>';
     }
