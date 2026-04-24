@@ -40,6 +40,7 @@ export default {
       if (request.method === 'POST' && path === '/bigquery')    return handleBigQuery(request, env);
       if (request.method === 'POST' && path === '/gsc-inspect') return handleGscInspect(request, env);
       if (path === '/fetch-sitemap')                            return handleFetchSitemap(request, env, url);
+      if (path === '/crawl-site')                           return handleCrawlSite(request, env, url);
       if (path === '/make-clients')                   return handleMakeClients(request, env);
       if (path.startsWith('/make/'))                 return handleMake(request, env, url, path);
       if (path === '/make-debug')                    return handleMakeDebug(request, env);
@@ -198,7 +199,7 @@ async function handleGscInspect(request, env) {
   }
 
   const token          = await getGoogleToken(env, ['https://www.googleapis.com/auth/webmasters.readonly']);
-  const urlsToInspect  = urls.slice(0, 1000);  // cap at 1000 — monthly use, daily quota resets
+  const urlsToInspect  = urls.slice(0, 2000);  // cap per invocation — frontend controls total batching
   const results        = [];
   const BATCH          = 10;                    // concurrent requests per batch
 
@@ -271,7 +272,7 @@ async function handleFetchSitemap(request, env, url) {
 }
 
 async function collectSitemapUrls(sitemapUrl, collector, depth) {
-  if (depth > 3 || collector.length >= 1000) return;
+  if (depth > 3 || collector.length >= 3000) return;
   try {
     const res = await fetch(sitemapUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
@@ -287,13 +288,55 @@ async function collectSitemapUrls(sitemapUrl, collector, depth) {
       // Sitemap index — recurse into child sitemaps in batches of 5
       for (let i = 0; i < locs.length; i += 5) {
         await Promise.all(locs.slice(i, i + 5).map(u => collectSitemapUrls(u, collector, depth + 1)));
-        if (collector.length >= 1000) break;
+        if (collector.length >= 3000) break;
       }
     } else {
-      collector.push(...locs.slice(0, 1000 - collector.length));
+      collector.push(...locs.slice(0, 3000 - collector.length));
     }
   } catch (e) {
     console.log(`[sitemap] error ${sitemapUrl}: ${e.message}`);
+  }
+}
+
+// ── Site crawler ───────────────────────────────────────────
+// GET /crawl-site?url=<encoded-url>
+// Fetches one page and returns all unique internal links found in its HTML.
+// No recursion — caller does multi-depth by calling this repeatedly.
+
+async function handleCrawlSite(request, env, url) {
+  const pageUrl = url.searchParams.get('url');
+  if (!pageUrl) return new Response(JSON.stringify({ error: 'url required' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+
+  let origin;
+  try { origin = new URL(pageUrl).origin; }
+  catch(e) { return new Response(JSON.stringify({ error: 'invalid url' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } }); }
+
+  try {
+    const res = await fetch(pageUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
+      redirect: 'follow',
+    });
+    if (!res.ok) return new Response(JSON.stringify({ urls: [], status: res.status }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+
+    const html = await res.text();
+    const seen = new Set();
+    const links = [];
+    const re = /href=["']([^"'#\s]+)/gi;
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      let href = m[1].trim();
+      if (href.startsWith('/') && !href.startsWith('//')) href = origin + href;
+      else if (href.startsWith('//')) href = 'https:' + href;
+      if (!href.startsWith(origin)) continue;
+      // Skip static assets and backend paths
+      if (/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|pdf|zip|xml|json)(\?|$)/i.test(href)) continue;
+      if (/\/(wp-admin|wp-json|wp-login|wp-cron|xmlrpc|feed)(\/|$)/i.test(href)) continue;
+      const normalized = href.split('?')[0].split('#')[0].replace(/\/+$/, '') || origin;
+      if (!seen.has(normalized)) { seen.add(normalized); links.push(normalized); }
+    }
+    return new Response(JSON.stringify({ urls: links, count: links.length }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+  } catch (e) {
+    return new Response(JSON.stringify({ urls: [], error: e.message }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   }
 }
 
