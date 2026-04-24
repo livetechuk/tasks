@@ -3674,6 +3674,7 @@ function renderMarketingReview() {
                 <label style="font-size:12px;color:#888;font-weight:600">Month</label>
                 <select id="mr-month" onchange="_mrPerformanceCache=null;mrLoadData()" class="seo-select">${getSeoMonthOptions()}</select>
                 <button class="seo-btn" onclick="mrRefresh()" id="mr-refresh-btn" style="white-space:nowrap">Refresh SC Data</button>
+                <button class="seo-btn" onclick="mrInspect()" id="mr-inspect-btn" style="white-space:nowrap;background:#2a6b2a">Inspect URLs</button>
               </div>
             </div>
           </div>
@@ -3854,96 +3855,70 @@ async function mrRefresh() {
     });
     const upsert = await supabaseWrite('sc_data', records, 'return=minimal');
     if (!upsert.ok) throw new Error(`Supabase insert ${upsert.status}`);
-    // Auto-generate findings via GSC URL Inspection — use sitemap for full coverage
-    const gscProperty = document.getElementById('mr-gsc-property')?.value?.trim();
-    if (gscProperty) {
-      try {
-        // Step 1: fetch sitemap URLs (gives us non-indexed pages BigQuery misses)
-        if (btn) btn.textContent = 'Fetching sitemap...';
-        let urlsToInspect = [];
-        const base = gscProperty.replace(/\/$/, '');
-
-        // Try robots.txt first to discover the sitemap URL
-        const sitemapCandidates = [];
-        try {
-          const robotsRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/fetch-sitemap?url=' + encodeURIComponent(`${base}/robots.txt`));
-          if (robotsRes.ok) {
-            const robotsData = await robotsRes.json();
-            // robots.txt sitemap lines are returned as "urls" by our parser
-            // Actually robots.txt isn't XML — fall through to candidates
-          }
-        } catch(_) {}
-        sitemapCandidates.push(`${base}/sitemap.xml`, `${base}/wp-sitemap.xml`, `${base}/sitemap_index.xml`);
-
-        for (const smUrl of sitemapCandidates) {
-          try {
-            console.log('[SC] Trying sitemap:', smUrl);
-            const smRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
-            const smData = await smRes.json();
-            console.log('[SC] Sitemap result:', smUrl, '→', smRes.status, smData.count, 'URLs, error:', smData.error);
-            if (smRes.ok && smData.urls && smData.urls.length > 0) {
-              urlsToInspect = smData.urls;
-              break;
-            }
-          } catch(e) { console.warn('[SC] Sitemap fetch error:', smUrl, e.message); }
-        }
-
-        // Fall back to BigQuery URLs if no sitemap found
-        if (!urlsToInspect.length) {
-          urlsToInspect = rows.map(r => r.url);
-          console.log('[SC] No sitemap found, falling back to', urlsToInspect.length, 'BQ URLs');
-        } else {
-          console.log('[SC] Using', urlsToInspect.length, 'sitemap URLs for inspection');
-        }
-
-        // Step 2: inspect all URLs
-        if (btn) btn.textContent = `Inspecting ${urlsToInspect.length} URLs...`;
-        const inspectRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/gsc-inspect', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ siteUrl: gscProperty, urls: urlsToInspect })
-        });
-        if (!inspectRes.ok) {
-          const errText = await inspectRes.text();
-          showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspect error ${inspectRes.status}: ${errText.slice(0,200)}`, 'error');
-        } else {
-          const inspected = await inspectRes.json();
-          const errors = inspected.filter(i => i.error);
-          const ok = inspected.filter(i => !i.error);
-
-          // Group by issue type; skip VALID/indexed pages
-          const findingGroups = {};
-          ok.forEach(item => {
-            if (!item.coverageState) return;
-            const finding = mrMapCoverageState(item.coverageState);
-            if (!finding) return; // null = indexed/no issue
-            if (!findingGroups[finding]) findingGroups[finding] = [];
-            findingGroups[finding].push(item.url);
-          });
-
-          const autoFindings = Object.entries(findingGroups).map(([name, urls]) => ({ name, count: urls.length, urls }));
-          if (autoFindings.length) {
-            await saveScSelections(month, clientId, autoFindings);
-            const total = autoFindings.reduce((s, f) => s + f.urls.length, 0);
-            showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) affecting ${total} of ${ok.length} URLs inspected.`, 'success');
-          } else if (errors.length === inspected.length && inspected.length > 0) {
-            showSeoMsg('mr-msg', `GSC inspection: all ${errors.length} URL checks failed — check the service account has Full access to this GSC property.`, 'error');
-          } else {
-            showSeoMsg('mr-msg', `Inspected ${ok.length} URLs — all indexed, no issues found.`, 'info');
-          }
-        }
-      } catch(e) {
-        console.warn('GSC inspect error:', e);
-        showSeoMsg('mr-msg', `Synced ${records.length} URLs. GSC inspection error: ${e.message}`, 'error');
-      }
-    } else {
-      showSeoMsg('mr-msg', `Synced ${records.length} URLs. Add a GSC Property URL above to auto-generate findings.`, 'info');
-    }
+    showSeoMsg('mr-msg', `Synced ${records.length} URLs. Click Inspect URLs to check for GSC issues.`, 'info');
     await mrLoadData();
   } catch(e) {
     console.error('mrRefresh error:', e);
     showSeoMsg('mr-msg', `Error: ${e.message}`, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Refresh SC Data'; }
+  }
+}
+
+async function mrInspect() {
+  const btn = document.getElementById('mr-inspect-btn');
+  const month = document.getElementById('mr-month')?.value;
+  const clientId = _mrCurrentClientId;
+  const gscProperty = document.getElementById('mr-gsc-property')?.value?.trim();
+  if (!clientId) { showSeoMsg('mr-msg', 'Select a client first.', 'error'); return; }
+  if (!gscProperty) { showSeoMsg('mr-msg', 'Enter a GSC Property URL first.', 'error'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Fetching sitemap...'; }
+  try {
+    // Fetch sitemap URLs
+    let urlsToInspect = [];
+    const base = gscProperty.replace(/\/$/, '');
+    for (const smUrl of [`${base}/sitemap_index.xml`, `${base}/sitemap.xml`, `${base}/wp-sitemap.xml`]) {
+      try {
+        const smRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
+        const smData = await smRes.json();
+        if (smRes.ok && smData.urls?.length > 0) { urlsToInspect = smData.urls; break; }
+      } catch(_) {}
+    }
+    if (!urlsToInspect.length) { showSeoMsg('mr-msg', 'Could not fetch sitemap. Check the GSC Property URL.', 'error'); return; }
+
+    if (btn) btn.textContent = `Inspecting ${Math.min(urlsToInspect.length, 1000)} of ${urlsToInspect.length} URLs...`;
+    const inspectRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/gsc-inspect', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ siteUrl: gscProperty, urls: urlsToInspect })
+    });
+    if (!inspectRes.ok) throw new Error(`GSC error ${inspectRes.status}`);
+    const inspected = await inspectRes.json();
+    const ok = inspected.filter(i => !i.error);
+    const errors = inspected.filter(i => i.error);
+
+    const findingGroups = {};
+    ok.forEach(item => {
+      const finding = mrMapCoverageState(item.coverageState);
+      if (!finding) return;
+      if (!findingGroups[finding]) findingGroups[finding] = [];
+      findingGroups[finding].push(item.url);
+    });
+
+    const autoFindings = Object.entries(findingGroups).map(([name, urls]) => ({ name, count: urls.length, urls }));
+    if (autoFindings.length) {
+      await saveScSelections(month, clientId, autoFindings);
+      const total = autoFindings.reduce((s, f) => s + f.urls.length, 0);
+      showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) across ${total} URLs (${ok.length} inspected of ${urlsToInspect.length} in sitemap).`, 'success');
+    } else if (errors.length === inspected.length && inspected.length > 0) {
+      showSeoMsg('mr-msg', 'All URL checks failed — ensure the service account has Full access to this GSC property.', 'error');
+    } else {
+      showSeoMsg('mr-msg', `Inspected ${ok.length} URLs — all indexed, no issues found.`, 'info');
+    }
+    await mrLoadData();
+  } catch(e) {
+    showSeoMsg('mr-msg', `Inspection error: ${e.message}`, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Inspect URLs'; }
   }
 }
 
@@ -3954,7 +3929,7 @@ async function mrSave() {
   const findings = [];
   document.querySelectorAll('.mr-finding-row').forEach(row => {
     const name = row.querySelector('.mr-finding-name')?.textContent?.trim();
-    const count = parseInt(row.querySelector('.mr-gsc-count')?.value) || null;
+    const count = null;
     const selectedUrls = Array.from(row.querySelectorAll('.mr-url-list input[type="checkbox"]:checked')).map(u => u.dataset.url);
     if (name) findings.push({ name, count, urls: selectedUrls });
   });
@@ -4036,9 +4011,6 @@ function mrAddFinding(name, gscCount, savedUrls) {
   div.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer" onclick="mrToggleFinding(this)">
       <span class="mr-finding-name" style="font-size:13px;flex:1">${name}</span>
-      <input type="number" class="mr-gsc-count" placeholder="Pages in GSC" min="0" value="${gscCount ?? ''}"
-        onclick="event.stopPropagation()"
-        style="width:120px;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:4px 8px;font-family:inherit;color:#555;text-align:right">
       <span class="mr-count-badge" style="display:none;background:#e8f2e8;color:#2a6b2a;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;flex-shrink:0"></span>
       <span class="mr-finding-caret" style="font-size:11px;color:#aaa">▸</span>
       <button onclick="event.stopPropagation();mrRemoveFinding(this)"
