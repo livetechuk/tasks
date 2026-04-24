@@ -39,6 +39,7 @@ export default {
       if (path.startsWith('/clickup/'))              return handleClickUp(request, env, url, path);
       if (request.method === 'POST' && path === '/bigquery')    return handleBigQuery(request, env);
       if (request.method === 'POST' && path === '/gsc-inspect') return handleGscInspect(request, env);
+      if (path === '/fetch-sitemap')                            return handleFetchSitemap(request, env, url);
       if (path === '/make-clients')                   return handleMakeClients(request, env);
       if (path.startsWith('/make/'))                 return handleMake(request, env, url, path);
       if (path === '/make-debug')                    return handleMakeDebug(request, env);
@@ -197,9 +198,9 @@ async function handleGscInspect(request, env) {
   }
 
   const token          = await getGoogleToken(env, ['https://www.googleapis.com/auth/webmasters.readonly']);
-  const urlsToInspect  = urls.slice(0, 100);   // cap at 100 — GSC quota is 2000/day
+  const urlsToInspect  = urls.slice(0, 400);   // cap at 400 — GSC quota is 2000/day
   const results        = [];
-  const BATCH          = 5;                     // concurrent requests per batch
+  const BATCH          = 10;                    // concurrent requests per batch
 
   for (let i = 0; i < urlsToInspect.length; i += BATCH) {
     const batch = urlsToInspect.slice(i, i + BATCH);
@@ -249,6 +250,45 @@ async function handleGscInspect(request, env) {
   return new Response(JSON.stringify(results), {
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
+}
+
+// ── Sitemap fetcher ───────────────────────────────────────
+// GET /fetch-sitemap?url=<encoded-url>
+// Recursively resolves sitemap indexes, returns flat list of page URLs.
+
+async function handleFetchSitemap(request, env, url) {
+  const sitemapUrl = url.searchParams.get('url');
+  if (!sitemapUrl) {
+    return new Response(JSON.stringify({ error: 'url param required' }), {
+      status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
+  const collected = [];
+  await collectSitemapUrls(sitemapUrl, collected, 0);
+  return new Response(JSON.stringify({ urls: collected, count: collected.length }), {
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+  });
+}
+
+async function collectSitemapUrls(sitemapUrl, collector, depth) {
+  if (depth > 3 || collector.length >= 1000) return;
+  try {
+    const res = await fetch(sitemapUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
+    });
+    if (!res.ok) return;
+    const xml = await res.text();
+    const locs = [...xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gs)].map(m => m[1]);
+    if (xml.includes('<sitemapindex')) {
+      // Sitemap index — recurse into child sitemaps in batches of 5
+      for (let i = 0; i < locs.length; i += 5) {
+        await Promise.all(locs.slice(i, i + 5).map(u => collectSitemapUrls(u, collector, depth + 1)));
+        if (collector.length >= 1000) break;
+      }
+    } else {
+      collector.push(...locs.slice(0, 1000 - collector.length));
+    }
+  } catch (_) {}
 }
 
 // ── Make.com clients — fetches all records from the Marketing Clients data store ──
