@@ -198,7 +198,7 @@ async function handleGscInspect(request, env) {
   }
 
   const token          = await getGoogleToken(env, ['https://www.googleapis.com/auth/webmasters.readonly']);
-  const urlsToInspect  = urls.slice(0, 400);   // cap at 400 — GSC quota is 2000/day
+  const urlsToInspect  = urls.slice(0, 500);   // cap at 500 — GSC quota is 2000/day
   const results        = [];
   const BATCH          = 10;                    // concurrent requests per batch
 

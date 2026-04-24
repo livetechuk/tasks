@@ -3873,7 +3873,7 @@ async function mrRefresh() {
             // Actually robots.txt isn't XML — fall through to candidates
           }
         } catch(_) {}
-        sitemapCandidates.push(`${base}/sitemap.xml`, `${base}/wp-sitemap.xml`, `${base}/sitemap_index.xml`);
+        sitemapCandidates.push(`${base}/sitemap_index.xml`, `${base}/sitemap.xml`, `${base}/wp-sitemap.xml`);
 
         for (const smUrl of sitemapCandidates) {
           try {
@@ -3954,7 +3954,7 @@ async function mrSave() {
   const findings = [];
   document.querySelectorAll('.mr-finding-row').forEach(row => {
     const name = row.querySelector('.mr-finding-name')?.textContent?.trim();
-    const count = parseInt(row.querySelector('.mr-gsc-count')?.value) || null;
+    const count = null;
     const selectedUrls = Array.from(row.querySelectorAll('.mr-url-list input[type="checkbox"]:checked')).map(u => u.dataset.url);
     if (name) findings.push({ name, count, urls: selectedUrls });
   });
@@ -4036,9 +4036,6 @@ function mrAddFinding(name, gscCount, savedUrls) {
   div.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer" onclick="mrToggleFinding(this)">
       <span class="mr-finding-name" style="font-size:13px;flex:1">${name}</span>
-      <input type="number" class="mr-gsc-count" placeholder="Pages in GSC" min="0" value="${gscCount ?? ''}"
-        onclick="event.stopPropagation()"
-        style="width:120px;font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:4px 8px;font-family:inherit;color:#555;text-align:right">
       <span class="mr-count-badge" style="display:none;background:#e8f2e8;color:#2a6b2a;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;flex-shrink:0"></span>
       <span class="mr-finding-caret" style="font-size:11px;color:#aaa">▸</span>
       <button onclick="event.stopPropagation();mrRemoveFinding(this)"
