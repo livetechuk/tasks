@@ -3976,9 +3976,15 @@ function mrSaveGscProperty() {
 }
 
 function mrLoadGscProperty() {
-  const val = _mrCurrentClientId ? (localStorage.getItem(`mr_gsc_${_mrCurrentClientId}`) || '') : '';
   const el = document.getElementById('mr-gsc-property');
-  if (el) el.value = val;
+  if (!el) return;
+  // Use localStorage value first; fall back to wp_url from Make.com record
+  let val = _mrCurrentClientId ? (localStorage.getItem(`mr_gsc_${_mrCurrentClientId}`) || '') : '';
+  if (!val && _mrCurrentClientId) {
+    const client = (_makeClientsCache || MAKE_CLIENTS_FALLBACK).find(c => c.id === _mrCurrentClientId);
+    val = client?.wp_url || '';
+  }
+  el.value = val;
 }
 
 function mrAddFinding(name, gscCount, savedUrls) {
@@ -4634,7 +4640,8 @@ async function loadMakeClientsIntoDropdown() {
         const assignee = normaliseAssignee(rawAssignee);
         const bq = v.bq_dataset || v.dataset || v.bigquery_dataset
           || Object.values(v).find(val => typeof val === 'string' && val.startsWith('searchconsole_')) || '';
-        return { id: bq || r.key, name, bq_dataset: bq, assignee, drive_folder_id: v.drive_folder_id || '' };
+        const wpUrl = v['WP URL'] || v.wp_url || v.website || v.url || '';
+        return { id: bq || r.key, name, bq_dataset: bq, assignee, drive_folder_id: v.drive_folder_id || '', wp_url: wpUrl };
       }).filter(c => c.id);
       if (!mapped.length) throw new Error('no valid records after mapping');
       clients = mapped;
