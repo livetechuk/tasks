@@ -3886,8 +3886,39 @@ async function mrInspect() {
     }
     if (!urlsToInspect.length) { showSeoMsg('mr-msg', 'Could not fetch sitemap. Check the GSC Property URL.', 'error'); return; }
 
-    // Cloudflare Workers free plan allows 50 subrequests per invocation
-    // (1 used for Google auth token). Batch into 45-URL chunks from the frontend.
+    // Crawl the site to discover URLs not in the sitemap (linked pages, potential 404s, redirects)
+    if (btn) btn.textContent = 'Crawling site for additional URLs...';
+    const allUrlSet = new Set(urlsToInspect.map(u => u.replace(/\/+$/, '')));
+    try {
+      // Depth 1: homepage
+      const homeRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/crawl-site?url=' + encodeURIComponent(base));
+      if (homeRes.ok) {
+        const homeData = await homeRes.json();
+        const depth1New = (homeData.urls || []).filter(u => !allUrlSet.has(u.replace(/\/+$/, '')));
+        depth1New.forEach(u => allUrlSet.add(u.replace(/\/+$/, '')));
+        // Depth 2: crawl the first 50 depth-1 pages in parallel batches of 5
+        const toDepth2 = depth1New.slice(0, 50);
+        for (let i = 0; i < toDepth2.length; i += 5) {
+          const batch = toDepth2.slice(i, i + 5);
+          const results = await Promise.all(batch.map(async pageUrl => {
+            try {
+              const r = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/crawl-site?url=' + encodeURIComponent(pageUrl));
+              return r.ok ? ((await r.json()).urls || []) : [];
+            } catch { return []; }
+          }));
+          results.flat().forEach(u => allUrlSet.add(u.replace(/\/+$/, '')));
+        }
+      }
+    } catch(_) {}
+    urlsToInspect = [...allUrlSet];
+    const GSC_DAILY_CAP = 2000;
+    if (urlsToInspect.length > GSC_DAILY_CAP) {
+      showSeoMsg('mr-msg', `Found ${urlsToInspect.length} URLs — capping at ${GSC_DAILY_CAP} (GSC daily quota). Sitemap URLs inspected first.`, 'info');
+      urlsToInspect = urlsToInspect.slice(0, GSC_DAILY_CAP);
+    }
+
+    // Each worker call is a separate invocation (Cloudflare free plan: 50 subrequests/invocation,
+    // 1 used for Google auth token). Send 45 URLs per call.
     const CHUNK = 45;
     const allInspected = [];
     for (let i = 0; i < urlsToInspect.length; i += CHUNK) {
@@ -3917,7 +3948,7 @@ async function mrInspect() {
     if (autoFindings.length) {
       await saveScSelections(month, clientId, autoFindings);
       const total = autoFindings.reduce((s, f) => s + f.urls.length, 0);
-      showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) across ${total} URLs (${ok.length} inspected of ${urlsToInspect.length} in sitemap).`, 'success');
+      showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) across ${total} URLs (${ok.length} of ${urlsToInspect.length} inspected — sitemap + crawled pages).`, 'success');
     } else if (errors.length === inspected.length && inspected.length > 0) {
       showSeoMsg('mr-msg', 'All URL checks failed — ensure the service account has Full access to this GSC property.', 'error');
     } else {
