@@ -3671,6 +3671,9 @@ function renderMarketingReview() {
                 <label style="font-size:12px;color:#888;font-weight:600">GSC Property</label>
                 <input type="text" id="mr-gsc-property" placeholder="https://example.com/" oninput="mrSaveGscProperty()"
                   style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:210px;color:#555">
+                <label style="font-size:12px;color:#888;font-weight:600">Sitemap URL</label>
+                <input type="text" id="mr-sitemap-url" placeholder="auto-detect" oninput="mrSaveSitemapUrl()"
+                  style="font-size:12px;border:0.5px solid #ddd;border-radius:6px;padding:5px 10px;font-family:inherit;width:200px;color:#555">
                 <label style="font-size:12px;color:#888;font-weight:600">Month</label>
                 <select id="mr-month" onchange="_mrPerformanceCache=null;mrLoadData()" class="seo-select">${getSeoMonthOptions()}</select>
                 <button class="seo-btn" onclick="mrRefresh()" id="mr-refresh-btn" style="white-space:nowrap">Refresh SC Data</button>
@@ -3770,6 +3773,7 @@ function mrSelectClient(id, name) {
   if (document.getElementById('mr-content')) document.getElementById('mr-content').style.display = 'block';
   if (document.getElementById('mr-client-heading')) document.getElementById('mr-client-heading').textContent = name;
   mrLoadGscProperty();
+  mrLoadSitemapUrl();
   mrLoadData();
 }
 
@@ -3874,17 +3878,46 @@ async function mrInspect() {
   if (!gscProperty) { showSeoMsg('mr-msg', 'Enter a GSC Property URL first.', 'error'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Fetching sitemap...'; }
   try {
-    // Fetch sitemap URLs
     let urlsToInspect = [];
     const base = gscProperty.replace(/\/$/, '');
-    for (const smUrl of [`${base}/sitemap_index.xml`, `${base}/sitemap.xml`, `${base}/wp-sitemap.xml`]) {
+    const customSitemap = document.getElementById('mr-sitemap-url')?.value?.trim();
+    const proxy = CLAUDE_PROXY.replace(/\/$/, '');
+
+    async function fetchSitemapUrls(smUrl) {
+      const r = await fetch(proxy + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
+      const d = await r.json();
+      return r.ok && d.urls?.length > 0 ? d.urls : [];
+    }
+
+    if (customSitemap) {
+      // User-specified sitemap takes priority
+      urlsToInspect = await fetchSitemapUrls(customSitemap);
+    }
+
+    if (!urlsToInspect.length) {
+      // Try sitemaps submitted in Google Search Console
       try {
-        const smRes = await fetch(CLAUDE_PROXY.replace(/\/$/, '') + '/fetch-sitemap?url=' + encodeURIComponent(smUrl));
-        const smData = await smRes.json();
-        if (smRes.ok && smData.urls?.length > 0) { urlsToInspect = smData.urls; break; }
+        const gscSmRes = await fetch(proxy + '/gsc-sitemaps?siteUrl=' + encodeURIComponent(gscProperty));
+        if (gscSmRes.ok) {
+          const gscSmData = await gscSmRes.json();
+          const submitted = (gscSmData.sitemap || []).map(s => s.path).filter(Boolean);
+          for (const smUrl of submitted) {
+            const urls = await fetchSitemapUrls(smUrl);
+            urlsToInspect.push(...urls);
+            if (urlsToInspect.length >= 3000) break;
+          }
+        }
       } catch(_) {}
     }
-    if (!urlsToInspect.length) { showSeoMsg('mr-msg', 'Could not fetch sitemap. Check the GSC Property URL.', 'error'); return; }
+
+    if (!urlsToInspect.length) {
+      // Fall back to auto-detecting common sitemap paths
+      for (const smUrl of [`${base}/sitemap_index.xml`, `${base}/sitemap.xml`, `${base}/wp-sitemap.xml`]) {
+        try { urlsToInspect = await fetchSitemapUrls(smUrl); if (urlsToInspect.length) break; } catch(_) {}
+      }
+    }
+
+    if (!urlsToInspect.length) { showSeoMsg('mr-msg', 'Could not fetch sitemap. Enter a Sitemap URL or check the GSC Property URL.', 'error'); return; }
 
     // Crawl the site to discover URLs not in the sitemap (linked pages, potential 404s, redirects)
     // Goes 3 levels deep: homepage → section pages → inner pages (product listings, archives, etc.)
@@ -4053,6 +4086,17 @@ function mrLoadGscProperty() {
     val = client?.wp_url || '';
   }
   el.value = val;
+}
+
+function mrSaveSitemapUrl() {
+  const val = document.getElementById('mr-sitemap-url')?.value || '';
+  if (_mrCurrentClientId) localStorage.setItem(`mr_sitemap_${_mrCurrentClientId}`, val);
+}
+
+function mrLoadSitemapUrl() {
+  const el = document.getElementById('mr-sitemap-url');
+  if (!el) return;
+  el.value = _mrCurrentClientId ? (localStorage.getItem(`mr_sitemap_${_mrCurrentClientId}`) || '') : '';
 }
 
 function mrAddFinding(name, gscCount, savedUrls) {
