@@ -3994,7 +3994,8 @@ async function mrInspect() {
       const total = autoFindings.reduce((s, f) => s + f.urls.length, 0);
       showSeoMsg('mr-msg', `Found ${autoFindings.length} issue type(s) across ${total} URLs (${ok.length} of ${urlsToInspect.length} inspected — sitemap + crawled pages).`, 'success');
     } else if (errors.length === inspected.length && inspected.length > 0) {
-      showSeoMsg('mr-msg', 'All URL checks failed — ensure the service account has Full access to this GSC property.', 'error');
+      const sample = errors[0]?.error || 'unknown error';
+      showSeoMsg('mr-msg', `All URL checks failed — ensure the service account has Full access to this GSC property. First error: ${sample}`, 'error');
     } else {
       showSeoMsg('mr-msg', `Inspected ${ok.length} URLs — all indexed, no issues found.`, 'info');
     }
