@@ -4000,7 +4000,7 @@ async function mrInspect() {
     }
     await mrLoadData();
   } catch(e) {
-    showSeoMsg('mr-msg', `Inspection error: ${e.message}`, 'error');
+    showSeoMsg('mr-msg', `Inspection error: ${e.message}${e.cause ? ' — ' + e.cause : ''}`, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Inspect URLs'; }
   }
@@ -4683,11 +4683,15 @@ async function adminLoadSync() {
 function showSeoMsg(id, msg, type) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.textContent = msg;
-  el.style.display = 'block';
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.gap = '8px';
   el.style.background = type === 'success' ? '#d1fae5' : type === 'error' ? '#fee2e2' : '#eff6ff';
   el.style.color = type === 'success' ? '#065f46' : type === 'error' ? '#991b1b' : '#1e40af';
-  setTimeout(() => { el.style.display = 'none'; }, 3000);
+  const dismiss = `<span onclick="document.getElementById('${id}').style.display='none'" style="cursor:pointer;margin-left:auto;font-size:16px;line-height:1;opacity:0.6">×</span>`;
+  el.innerHTML = `<span style="flex:1">${msg}</span>${dismiss}`;
+  // Errors stay until dismissed; success/info auto-hide after 6 seconds
+  if (type !== 'error') setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
 
 function renderCurrentViewAndInit(active) {
